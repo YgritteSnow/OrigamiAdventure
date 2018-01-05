@@ -53,15 +53,25 @@ public class PolygonEdge
 /// <summary>
 /// 中间计算过程用的数据结构，存储一条边的两个顶点及其相关信息
 /// </summary>
+public struct PointIndexPair
+{
+	public PointIndexPair(int h, int t)
+	{
+		idx_head = h;
+		idx_toe = t;
+	}
+	public int idx_head;
+	public int idx_toe;
+}
 public struct PointPair
 {
 	public PointPair(PolygonPoint h, PolygonPoint t, PolygonEdge e)
 	{
 		head_point = h; toe_point = t; old_edge = e;
 	}
-	PolygonPoint head_point;
-	PolygonPoint toe_point;
-	PolygonEdge old_edge;
+	public PolygonPoint head_point;
+	public PolygonPoint toe_point;
+	public PolygonEdge old_edge;
 }
 #endregion
 
@@ -69,7 +79,7 @@ public struct PointPair
 public class Polygon
 {
 	public List<PolygonPoint> m_points; // 多边形的点
-	public List<PolygonEdge> m_edges; // 多边形的边
+	private List<PolygonEdge> m_edges; // 多边形的边
 
 	public List<Matrix4x4> m_transHistory; // 进行过的所有位置变换
 	public Matrix4x4 m_curTrans; // 当前位置
@@ -99,10 +109,27 @@ public class Polygon
 			m_edges[idx].distance = point_t.DistanceTo(point_h);
 		}
 	}
-	public void SetEdgeByIndexPair(List<int> index_pairs)
-	{ } // todo 该这里了！！！！！！！！！
+	public void SetEdgeByIndexPair(List<PointIndexPair> index_pairs)
+	{
+		m_edges = new List<PolygonEdge>();
+		for(int i = 0; i != index_pairs.Count; ++i)
+		{
+			m_edges.Add(new PolygonEdge(i, index_pairs[i].idx_head, index_pairs[i].idx_toe, true));
+		}
+	}
+	private void FindPointIndex(ref PolygonPoint p)
+	{
+		for
+	}
 	public void SetEdgeByPointPair(List<PointPair> point_pairs)
-	{ }
+	{ // todo 该这里了！！！！！！！！！
+		m_edges = new List<PolygonEdge>();
+		List<PointIndexPair> idx_pair = new List<PointIndexPair>();
+		foreach(PointPair point_pair in point_pairs)
+		{
+			for
+		}
+	}
 	public void CalculateMesh()
 	{
 		// 创建mesh数据

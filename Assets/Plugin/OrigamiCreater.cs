@@ -61,10 +61,10 @@ public class OrigamiCreater : MonoBehaviour {
 	public void ClearOrigamiPaper()
 	{
 		m_paper.ClearAllPolygons();
-		InitSquarePolygon();
+		InitNullPolygon();
 	}
 
-	void InitSquarePolygon()
+	void InitNullPolygon()
 	{
 		List<Polygon> res = new List<Polygon>();
 
@@ -75,11 +75,12 @@ public class OrigamiCreater : MonoBehaviour {
 		p.m_points.Add(new PolygonPoint(-1, -1));
 		p.m_points.Add(new PolygonPoint(-1, 1));
 
-		p.m_edges = new List<PolygonEdge>();
-		p.m_edges.Add(new PolygonEdge(1, 0, 1, true));
-		p.m_edges.Add(new PolygonEdge(2, 1, 2, true));
-		p.m_edges.Add(new PolygonEdge(3, 2, 3, true));
-		p.m_edges.Add(new PolygonEdge(4, 3, 0, true));
+		List<PointIndexPair> edges = new List<PointIndexPair>();
+		edges.Add(new PointIndexPair(0, 1));
+		edges.Add(new PointIndexPair(1, 2));
+		edges.Add(new PointIndexPair(2, 3));
+		edges.Add(new PointIndexPair(3, 0));
+		p.SetEdgeByIndexPair(edges);
 
 		p.InitTrans();
 		p.CalEdgeDistance();
