@@ -7,9 +7,11 @@ using UnityEditor;
 public class OrigamiOperateInspector : Editor
 {
 	OrigamiCreater targetOrigami = null;
+	List<Color> m_op_colors = new List<Color>();
 	void OnEnable()
 	{
 		targetOrigami = target as OrigamiCreater;
+
 	}
 	public override void OnInspectorGUI()
 	{
@@ -19,15 +21,50 @@ public class OrigamiOperateInspector : Editor
 		targetOrigami.m_paper = EditorGUILayout.ObjectField("paper:", targetOrigami.m_paper, typeof(OrigamiPaper), true) as OrigamiPaper;
 		targetOrigami.ResetOperatorCount(EditorGUILayout.IntField("size", targetOrigami.m_operators.Count));
 		GUILayout.Space(10);
-		foreach (OrigamiOperator op in targetOrigami.m_operators)
+
+		for (int i = 0; i != targetOrigami.m_operators.Count; ++i)
 		{
-			//EditorGUILayout.BeginHorizontal();
-			op.head_pos = EditorGUILayout.Vector3Field("head_pos:", op.head_pos);
-			op.toe_pos = EditorGUILayout.Vector3Field("toe_pos:", op.toe_pos);
-			op.touch_dir = EditorGUILayout.Vector3Field("touch_dir:", op.touch_dir);
-			EditorGUILayout.LabelField("valid:" + op.is_valid);
-			//EditorGUILayout.EndHorizontal();
+			OrigamiOperator op = targetOrigami.m_operators[i];
+			if(m_op_colors.Count < i+1)
+			{
+				m_op_colors.Add(Color.green);
+			}
+
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.Label("index: " + i, GUILayout.Width(50));
+			op.is_valid = EditorGUILayout.Toggle(op.is_valid);
+			m_op_colors[i] = EditorGUILayout.ColorField(m_op_colors[i]);
+			EditorGUILayout.EndHorizontal();
+			EditorGUILayout.BeginHorizontal();
+			//op.head_pos = EditorGUILayout.Vector2Field(new GUIContent("head:","tips"), op.head_pos, GUILayout.Width(200));
+			GUILayout.Label("head:", GUILayout.Width(50));
+			op.head_pos.x = EditorGUILayout.FloatField(op.head_pos.x);
+			op.head_pos.y = EditorGUILayout.FloatField(op.head_pos.y);
+			EditorGUILayout.EndHorizontal();
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.Label("toe:", GUILayout.Width(50));
+			op.toe_pos.x = EditorGUILayout.FloatField(op.toe_pos.x);
+			op.toe_pos.y = EditorGUILayout.FloatField(op.toe_pos.y);
+			EditorGUILayout.EndHorizontal();
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.Label("touch:", GUILayout.Width(50));
+			op.touch_dir.x = EditorGUILayout.FloatField(op.touch_dir.x);
+			op.touch_dir.y = EditorGUILayout.FloatField(op.touch_dir.y);
+			EditorGUILayout.EndHorizontal();
 			GUILayout.Space(10);
+		}
+	}
+
+	void OnSceneGUI()
+	{
+		OrigamiCreater t = target as OrigamiCreater;
+		if (t == null || t.gameObject == null)
+			return;
+
+		for (int i = 0; i != targetOrigami.m_operators.Count; ++i)
+		{
+			OrigamiOperator op = targetOrigami.m_operators[i];
+			Debug.DrawLine(op.head_pos, op.toe_pos, m_op_colors[i]);
 		}
 	}
 }

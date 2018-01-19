@@ -21,11 +21,11 @@ public class DebugOrigamiPaper : MonoBehaviour {
 		p.m_points.Add(new PolygonPoint(-1, -1));
 		p.m_points.Add(new PolygonPoint(-1, 1));
 
-		List<PointIndexPair> edge_indexes = new List<PointIndexPair>();
-		edge_indexes.Add(new PointIndexPair(0, 1));
-		edge_indexes.Add(new PointIndexPair(1, 2));
-		edge_indexes.Add(new PointIndexPair(2, 3));
-		edge_indexes.Add(new PointIndexPair(3, 0));
+		List<PolygonEdge> edge_indexes = new List<PolygonEdge>();
+		edge_indexes.Add(new PolygonEdge(0, 0, 1, true));
+		edge_indexes.Add(new PolygonEdge(1, 1, 2, true));
+		edge_indexes.Add(new PolygonEdge(2, 2, 3, true));
+		edge_indexes.Add(new PolygonEdge(3, 3, 0, true));
 		p.SetEdgeByIndexPair(edge_indexes);
 
 		p.InitAll();
@@ -38,11 +38,11 @@ public class DebugOrigamiPaper : MonoBehaviour {
 		p.m_points.Add(new PolygonPoint(5, -1));
 		p.m_points.Add(new PolygonPoint(5, 1));
 
-		List<PointIndexPair> edges = new List<PointIndexPair>();
-		edges.Add(new PointIndexPair(0, 1));
-		edges.Add(new PointIndexPair(1, 2));
-		edges.Add(new PointIndexPair(2, 3));
-		edges.Add(new PointIndexPair(3, 0));
+		List<PolygonEdge> edges = new List<PolygonEdge>();
+		edges.Add(new PolygonEdge(0, 0, 1, true));
+		edges.Add(new PolygonEdge(1, 1, 2, true));
+		edges.Add(new PolygonEdge(2, 2, 3, true));
+		edges.Add(new PolygonEdge(3, 3, 0, true));
 		p.SetEdgeByIndexPair(edges);
 
 		p.InitAll();

@@ -43,6 +43,7 @@ public class PolygonEdge
 	public int idx_head; // 顶点索引
 	public int idx_toe; // 顶点索引
 	public bool bInside; // 是否是内部的折痕边
+
 	public List<PolygonLayer> parent_layers;
 
 	public float distance; // 边的长度
@@ -53,16 +54,6 @@ public class PolygonEdge
 /// <summary>
 /// 中间计算过程用的数据结构，存储一条边的两个顶点及其相关信息
 /// </summary>
-public struct PointIndexPair
-{
-	public PointIndexPair(int h, int t)
-	{
-		idx_head = h;
-		idx_toe = t;
-	}
-	public int idx_head;
-	public int idx_toe;
-}
 public struct PointPair
 {
 	public PointPair(PolygonPoint h, PolygonPoint t, PolygonEdge e)
@@ -80,6 +71,7 @@ public class Polygon
 {
 	public List<PolygonPoint> m_points; // 多边形的点
 	private List<PolygonEdge> m_edges; // 多边形的边
+	public List<PolygonEdge> Edges { get { return m_edges; } }
 
 	public List<Matrix4x4> m_transHistory; // 进行过的所有位置变换
 	public Matrix4x4 m_curTrans; // 当前位置
@@ -101,7 +93,7 @@ public class Polygon
 	#region 计算基本的顶点和边的数据
 	public void CalEdgeDistance()
 	{
-		for(int idx = 0; idx != m_edges.Count; ++idx)
+		for (int idx = 0; idx != m_edges.Count; ++idx)
 		{
 			PolygonEdge edge = m_edges[idx];
 			PolygonPoint point_h = m_points[edge.idx_head];
@@ -109,25 +101,29 @@ public class Polygon
 			m_edges[idx].distance = point_t.DistanceTo(point_h);
 		}
 	}
-	public void SetEdgeByIndexPair(List<PointIndexPair> index_pairs)
+	public void SetEdgeByIndexPair(List<PolygonEdge> index_pairs)
 	{
-		m_edges = new List<PolygonEdge>();
-		for(int i = 0; i != index_pairs.Count; ++i)
-		{
-			m_edges.Add(new PolygonEdge(i, index_pairs[i].idx_head, index_pairs[i].idx_toe, true));
-		}
+		m_edges = index_pairs;
 	}
-	private void FindPointIndex(ref PolygonPoint p)
+	private int _FindPointIndex(PolygonPoint p)
 	{
-		for
+		for (int idx = 0; idx != m_points.Count; ++idx)
+		{
+			if (m_points[idx] == p)
+			{
+				return idx;
+			}
+		}
+		Debug.LogError("Cannot find point!!!");
+		return -1;
 	}
 	public void SetEdgeByPointPair(List<PointPair> point_pairs)
-	{ // todo 该这里了！！！！！！！！！
+	{
 		m_edges = new List<PolygonEdge>();
-		List<PointIndexPair> idx_pair = new List<PointIndexPair>();
-		foreach(PointPair point_pair in point_pairs)
+		for (int idx = 0; idx < point_pairs.Count; ++idx)
 		{
-			for
+			PointPair point_pair = point_pairs[idx];
+			m_edges.Add(new PolygonEdge(point_pair.old_edge.ID, _FindPointIndex(point_pair.head_point), _FindPointIndex(point_pair.toe_point), point_pair.old_edge.bInside));
 		}
 	}
 	public void CalculateMesh()
@@ -137,7 +133,7 @@ public class Polygon
 
 		// 顶点直接拷贝多边形的点
 		m_meshData.m_vertices = new Vector3[m_points.Count];
-		for(int idx = 0; idx != m_meshData.m_vertices.Length; ++idx)
+		for (int idx = 0; idx != m_meshData.m_vertices.Length; ++idx)
 		{
 			m_meshData.m_vertices[idx] = m_points[idx].position;
 		}
@@ -202,7 +198,7 @@ public class Polygon
 	void SortPoints(ref List<int> point_line)
 	{
 		List<PolygonPoint> new_points = new List<PolygonPoint>();
-		for(int i = 0; i != point_line.Count; ++i)
+		for (int i = 0; i != point_line.Count; ++i)
 		{
 			new_points.Add(m_points[point_line[i]]);
 			point_line[i] = i;
@@ -224,7 +220,7 @@ public class Polygon
 		int final_toe_idx = 0;
 		float final_toe_dist = 0;
 		float min_dot_angle = 2; // 最大张角，即为最小dot值，最大为1，故而初始化为2
-		for(head_idx = 0; head_idx < m_points.Count-1; ++head_idx)
+		for (head_idx = 0; head_idx < m_points.Count - 1; ++head_idx)
 		{
 			for (toe_idx = head_idx + 1; toe_idx < m_points.Count; ++toe_idx)
 			{
@@ -286,15 +282,15 @@ public class Polygon
 			float next_dist = next_dir.sqrMagnitude;
 			next_dir.Normalize();
 			float next_dot = Vector2.Dot(last_dir, next_dir);
-			if(next_dot < min_dot_angle - Mathf.Epsilon)
+			if (next_dot < min_dot_angle - Mathf.Epsilon)
 			{
 				min_dot_angle = next_dot;
 				final_idx = idx;
 				min_dist = next_dist;
 			}
-			else if(next_dot < min_dot_angle + Mathf.Epsilon)
+			else if (next_dot < min_dot_angle + Mathf.Epsilon)
 			{
-				if(next_dist < min_dist)
+				if (next_dist < min_dist)
 				{
 					min_dot_angle = next_dot;
 					final_idx = idx;
@@ -314,18 +310,18 @@ public class Polygon
 	void SetTriangleList(ref List<int> point_line, ref int[] triangles)
 	{
 		int triangle_count = (point_line.Count - 2) * 3;
-		if(triangle_count < 0)
+		if (triangle_count < 0)
 		{
 			triangles = new int[0];
 			return;
 		}
 		triangles = new int[triangle_count];
-		for(int i = 2; i < point_line.Count; ++i)
+		for (int i = 2; i < point_line.Count; ++i)
 		{
-			int triangle_idx = (i-2) * 3;
+			int triangle_idx = (i - 2) * 3;
 			triangles[triangle_idx] = point_line[0];
-			triangles[triangle_idx+1] = point_line[i-1];
-			triangles[triangle_idx+2] = point_line[i];
+			triangles[triangle_idx + 1] = point_line[i - 1];
+			triangles[triangle_idx + 2] = point_line[i];
 		}
 	}
 	#endregion
@@ -336,33 +332,33 @@ public class Polygon
 	/// </summary>
 	Vector4 CalculateBoundRect()
 	{
-		float left,right,top,bottom;
-		if(m_points.Count == 0)
+		float left, right, top, bottom;
+		if (m_points.Count == 0)
 		{
-			return new Vector4(0,0,0,0);
+			return new Vector4(0, 0, 0, 0);
 		}
 		left = m_points[0].position.x;
 		right = m_points[0].position.x;
 		top = m_points[0].position.y;
 		bottom = m_points[0].position.y;
 
-		foreach(PolygonPoint p in m_points)
+		foreach (PolygonPoint p in m_points)
 		{
 			left = Mathf.Min(p.position.x, left);
 			right = Mathf.Max(p.position.x, right);
 			top = Mathf.Max(p.position.y, top);
 			bottom = Mathf.Min(p.position.y, bottom);
 		}
-		return new Vector4(left,right,top,bottom);
+		return new Vector4(left, right, top, bottom);
 	}
-	
+
 	/// <summary>
 	/// 把坐标投射到包围盒长方形中，作为uv坐标
 	/// </summary>
 	void CalUVByProjectToBound(Vector4 bound, ref Vector2[] uvs)
 	{
 		uvs = new Vector2[m_points.Count];
-		if(m_points.Count == 0)
+		if (m_points.Count == 0)
 		{
 			return;
 		}
@@ -370,7 +366,7 @@ public class Polygon
 		float width_inv = 1 / (bound.y - bound.x);
 		float height_ivn = 1 / (bound.z - bound.w);
 
-		for(int idx = 0; idx < m_points.Count; ++idx)
+		for (int idx = 0; idx < m_points.Count; ++idx)
 		{
 			uvs[idx] = new Vector2(
 				(m_points[idx].position.x - bound.x) * width_inv,
@@ -384,14 +380,14 @@ public class Polygon
 	public bool IsPointInside(Vector2 point)
 	{
 		int total_count = m_points.Count;
-		for(int i = 0; i != m_points.Count; ++i)
+		for (int i = 0; i != m_points.Count; ++i)
 		{
 			Vector2 cur_pos = m_points[i].position;
 			Vector2 last_dir = m_points[(i - 1 + total_count) % total_count].position - cur_pos;
 			Vector2 next_dir = m_points[(i + 1) % total_count].position - cur_pos;
 			Vector2 cur_dir = point - cur_pos;
 			float cross_result = Vector3.Dot(Vector3.Cross(cur_dir, last_dir), Vector3.Cross(next_dir, cur_dir));
-			if(cross_result < Mathf.Epsilon)
+			if (cross_result < Mathf.Epsilon)
 			{
 				return false;
 			}
@@ -406,7 +402,7 @@ public class Polygon
 		bool has_found = false;
 		float min_ray_dist = 0;
 		for (int i = 0; i != m_edges.Count; ++i)
-		{	
+		{
 			PolygonEdge edge = m_edges[i];
 			Vector2 head_pos = m_points[edge.idx_head].position;
 			Vector2 toe_pos = m_points[edge.idx_toe].position;
@@ -419,13 +415,13 @@ public class Polygon
 			}
 
 			float edge_param = Vector2.Dot(start_point - head_pos, ray_dir_ver) / edge_dot;
-			if(edge_param < 0 || edge_param > 1)
+			if (edge_param < 0 || edge_param > 1)
 			{
 				continue; // 交点不在边上
 			}
 
 			Vector2 collide_point = head_pos + edge_param * edge_dir;
-			if(Vector2.Dot(ray_direct, collide_point - start_point) <= 0)
+			if (Vector2.Dot(ray_direct, collide_point - start_point) <= 0)
 			{
 				continue; // 交点在射线的反方向
 			}
@@ -446,10 +442,10 @@ public class Polygon
 	#region 折叠要求多边形的所有顶点都在需要折叠的一侧
 	public bool CheckAllOneSide(Vector2 head_pos, Vector2 toe_pos, Vector2 fold_dir)
 	{
-		foreach(PolygonPoint p in m_points)
+		foreach (PolygonPoint p in m_points)
 		{
 			Vector2 point_dir = head_pos - p.position;
-			if(Vector2.Dot(point_dir, fold_dir) < -Mathf.Epsilon)
+			if (Vector2.Dot(point_dir, fold_dir) < -Mathf.Epsilon)
 			{
 				return false;
 			}
@@ -474,10 +470,10 @@ public class Polygon
 		List<PointPair> right_edge = new List<PointPair>();
 		PolygonPoint left2right_point = null;
 		PolygonPoint right2left_point = null;
-		for(int i = 0; i != m_points.Count; ++i)
+		for (int i = 0; i != m_points.Count; ++i)
 		{
 			PolygonPoint p = m_points[i];
-			PolygonPoint last_p = m_points[(i-1+m_points.Count)%m_points.Count];
+			PolygonPoint last_p = m_points[(i - 1 + m_points.Count) % m_points.Count];
 			PolygonEdge e = m_edges[i]; // 是当前点和前一个点组成的边
 
 			float last_dir_param = Vector2.Dot(last_p.position - head_pos, ver_dir);
@@ -542,7 +538,7 @@ public class Polygon
 			}
 		}
 
-		if(left_point.Count == 0 || right_point.Count == 0)
+		if (left_point.Count == 0 || right_point.Count == 0)
 		{
 			return false;
 		}
@@ -774,7 +770,7 @@ public class PolygonLayer : MonoBehaviour {
 			if(p.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir))
 			{
 				fold_info.fold_polygons.Add(p);
-				foreach(PolygonEdge edge in p.m_edges)
+				foreach(PolygonEdge edge in p.Edges)
 				{
 					foreach(PolygonLayer layer in edge.parent_layers)
 					{
@@ -818,6 +814,27 @@ public class PolygonLayer : MonoBehaviour {
 			}
 		}
 		m_polygons = new_polygons;
+	}
+	#endregion
+
+	#region create new fold line in runtime
+	public void AddNewEdge(int edge_id, bool bInside, Vector3 head_pos, Vector3 toe_pos)
+	{
+		List<Polygon> new_polygons = new List<Polygon>();
+		foreach(Polygon pl in m_polygons)
+		{
+			Polygon left_p, right_p;
+			if(pl.CutPolygon(head_pos, toe_pos, out left_p, out right_p))
+			{
+				new_polygons.Add(left_p);
+				new_polygons.Add(right_p);
+			}
+			else
+			{
+				new_polygons.Add(pl);
+			}
+		}
+		SetPolygons(new_polygons);
 	}
 	#endregion
 }

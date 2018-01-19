@@ -53,20 +53,7 @@ public class OrigamiPaper : MonoBehaviour {
 		if (m_pressingPolygon.GetTouchPoint(false, ref local_newTouchPoint))
 		{
 			Vector2 local_touch_dir = local_newTouchPoint - m_local_lastTouchPoint;
-			Vector2 local_head_pos, local_toe_pos;
-			if(m_pressingPolygon.FindFoldEdge(m_local_lastTouchPoint, ref local_touch_dir, out local_head_pos, out local_toe_pos))
-			{
-				List<PolygonLayer> fold_layers;
-				List<FoldInfo> fold_infos;
-				Vector2 world_head_pos = m_pressingPolygon.transform.TransformPoint(local_head_pos);
-				Vector2 world_toe_pos = m_pressingPolygon.transform.TransformPoint(local_toe_pos);
-				Vector2 world_touch_dir = m_pressingPolygon.transform.TransformVector(local_touch_dir);
-				bool can_fold = CheckNeedFoldLayersWorld(m_pressingPolygon, world_head_pos, world_toe_pos, world_touch_dir, out fold_layers, out fold_infos);
-				if(can_fold)
-				{
-					FormatNewLayersWorld(fold_layers, fold_infos, world_head_pos, world_toe_pos, world_touch_dir, FromUpside());
-				}
-			}
+			FoldByEdgeInLocalByTouchPoint(m_pressingPolygon, local_touch_dir, m_local_lastTouchPoint);
 		}
 
 		m_pressingPolygon = null;
@@ -225,5 +212,37 @@ public class OrigamiPaper : MonoBehaviour {
 	{
 		// todo 等有了摄像机之后，按照摄像机角度来计算这个数值
 		return true;
+	}
+
+	public void FoldByEdgeInLocalByEdge(PolygonLayer pl, Vector2 local_touch_dir, Vector2 local_head_pos, Vector2 local_toe_pos)
+	{
+		List<PolygonLayer> fold_layers;
+		List<FoldInfo> fold_infos;
+		Vector2 world_head_pos = pl.transform.TransformPoint(local_head_pos);
+		Vector2 world_toe_pos = pl.transform.TransformPoint(local_toe_pos);
+		Vector2 world_touch_dir = pl.transform.TransformVector(local_touch_dir);
+		bool can_fold = CheckNeedFoldLayersWorld(pl, world_head_pos, world_toe_pos, world_touch_dir, out fold_layers, out fold_infos);
+		if (can_fold)
+		{
+			FormatNewLayersWorld(fold_layers, fold_infos, world_head_pos, world_toe_pos, world_touch_dir, FromUpside());
+		}
+	}
+
+	public void FoldByEdgeInLocalByTouchPoint(PolygonLayer pl, Vector2 local_touch_dir, Vector2 local_last_touch_point)
+	{
+		Vector2 local_head_pos, local_toe_pos;
+		if (pl.FindFoldEdge(local_last_touch_point, ref local_touch_dir, out local_head_pos, out local_toe_pos))
+		{
+			List<PolygonLayer> fold_layers;
+			List<FoldInfo> fold_infos;
+			Vector2 world_head_pos = pl.transform.TransformPoint(local_head_pos);
+			Vector2 world_toe_pos = pl.transform.TransformPoint(local_toe_pos);
+			Vector2 world_touch_dir = pl.transform.TransformVector(local_touch_dir);
+			bool can_fold = CheckNeedFoldLayersWorld(pl, world_head_pos, world_toe_pos, world_touch_dir, out fold_layers, out fold_infos);
+			if (can_fold)
+			{
+				FormatNewLayersWorld(fold_layers, fold_infos, world_head_pos, world_toe_pos, world_touch_dir, FromUpside());
+			}
+		}
 	}
 }
