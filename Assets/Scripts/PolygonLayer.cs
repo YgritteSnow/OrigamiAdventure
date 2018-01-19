@@ -31,24 +31,32 @@ public class PolygonPoint
 
 public class PolygonEdge
 {
+	private static int s_id_accumulator = 0;
+	public static int GetNextID() { return ++s_id_accumulator; }
+
+	public PolygonEdge(int h, int t, bool inside)
+	{
+		ID = GetNextID();
+		idx_head = h;
+		idx_toe = t;
+		bInside = inside;
+	}
+
 	public PolygonEdge(int id, int h, int t, bool inside)
 	{
 		ID = id;
 		idx_head = h;
 		idx_toe = t;
 		bInside = inside;
-		parent_layers = new List<PolygonLayer>();
 	}
 	public int ID; // 边的id
 	public int idx_head; // 顶点索引
 	public int idx_toe; // 顶点索引
 	public bool bInside; // 是否是内部的折痕边
 
-	public List<PolygonLayer> parent_layers;
-
 	public float distance; // 边的长度
 
-	public static PolygonEdge zero { get{ return new PolygonEdge(0, -1, -1, false); } }
+	public static PolygonEdge invalid { get{ return new PolygonEdge(0, -1, -1, false); } }
 }
 
 /// <summary>
@@ -76,6 +84,8 @@ public class Polygon
 	public List<Matrix4x4> m_transHistory; // 进行过的所有位置变换
 	public Matrix4x4 m_curTrans; // 当前位置
 
+	public PolygonLayer m_parentLayer = null; // 所属的 PolygonLayer
+
 	public MeshData m_meshData;
 	public void InitTrans()
 	{
@@ -88,6 +98,7 @@ public class Polygon
 		InitTrans();
 		CalEdgeDistance();
 		CalculateMesh();
+		InitEdgeParent();
 	}
 
 	#region 计算基本的顶点和边的数据
@@ -130,6 +141,11 @@ public class Polygon
 	{
 		// 创建mesh数据
 		m_meshData = new MeshData();
+		
+		// 首先建立沿着周长的所有点的列表
+		List<int> point_line;
+		CalPointLine(out point_line);
+		SortPoints(ref point_line);
 
 		// 顶点直接拷贝多边形的点
 		m_meshData.m_vertices = new Vector3[m_points.Count];
@@ -138,11 +154,6 @@ public class Polygon
 			m_meshData.m_vertices[idx] = m_points[idx].position;
 		}
 
-		// 首先建立沿着周长的所有点的列表
-		List<int> point_line;
-		CalPointLine(out point_line);
-		SortPoints(ref point_line);
-
 		// 从一个点出发，构建所有的三角形
 		SetTriangleList(ref point_line, ref m_meshData.m_triangles);
 
@@ -150,22 +161,11 @@ public class Polygon
 		CalUVByProjectToBound(CalculateBoundRect(), ref m_meshData.m_uvs);
 	}
 
-	public void InitEdgeParent(PolygonLayer parent)
-	{
-		AddEdgeParent(parent);
-	}
-	public void AddEdgeParent(PolygonLayer parent)
+	public void InitEdgeParent()
 	{
 		foreach (PolygonEdge edge in m_edges)
 		{
-			edge.parent_layers.Add(parent);
-		}
-	}
-	public void DelEdgeParent(PolygonLayer parent)
-	{
-		foreach (PolygonEdge edge in m_edges)
-		{
-			edge.parent_layers.Remove(parent);
+			PolygonEdgeMapping.AddEdgePolygon(edge.ID, this);
 		}
 	}
 	#endregion
@@ -187,7 +187,7 @@ public class Polygon
 		// 根据上边已经建立了的列表，顺次寻找张角最大的下一个点
 		while (point_line.Count < m_points.Count)
 		{
-			int next_idx = FindOtherEnd(point_line.Count - 1, point_line.Count - 2);
+			int next_idx = FindOtherEnd(point_line[point_line.Count - 1], point_line[point_line.Count - 2]);
 			point_line.Add(next_idx);
 		}
 	}
@@ -278,6 +278,10 @@ public class Polygon
 		float min_dist = 0; // 最小距离
 		for (int idx = 0; idx < m_points.Count; ++idx)
 		{
+			if(idx == cur_idx || idx == last_idx)
+			{
+				continue;
+			}
 			Vector2 next_dir = m_points[idx].position - cur_point;
 			float next_dist = next_dir.sqrMagnitude;
 			next_dir.Normalize();
@@ -457,6 +461,7 @@ public class Polygon
 	#region 检查多边形沿着一条线切成两个的可行性
 	public bool CutPolygon(Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p)
 	{
+		// 这里！！！查一下当线条恰好和mesh的边缘重叠时的报错
 		left_p = new Polygon();
 		right_p = new Polygon();
 
@@ -470,6 +475,8 @@ public class Polygon
 		List<PointPair> right_edge = new List<PointPair>();
 		PolygonPoint left2right_point = null;
 		PolygonPoint right2left_point = null;
+
+		// 依次计算每条边和切割线的交点，插入多边形点和边的列表
 		for (int i = 0; i != m_points.Count; ++i)
 		{
 			PolygonPoint p = m_points[i];
@@ -484,6 +491,7 @@ public class Polygon
 				right2left_point = new PolygonPoint(new_point.x, new_point.y);
 
 				left_point.Add(p);
+				//right_point.Add(right2left_point);
 
 				left_edge.Add(new PointPair(right2left_point, p, e));
 				right_edge.Add(new PointPair(last_p, right2left_point, e));
@@ -493,6 +501,7 @@ public class Polygon
 				Vector2 new_point = GetCrossPoint(m_points[i - 1].position, p.position, head_pos, toe_pos);
 				left2right_point = new PolygonPoint(new_point.x, new_point.y);
 
+				//left_point.Add(left2right_point);
 				right_point.Add(p);
 
 				right_edge.Add(new PointPair(left2right_point, p, e));
@@ -538,6 +547,17 @@ public class Polygon
 			}
 		}
 
+		if (left2right_point != null && right2left_point != null)
+		{
+			left_point.Add(right2left_point);
+			right_point.Add(right2left_point);
+			left_point.Add(left2right_point);
+			right_point.Add(left2right_point);
+			int new_id = PolygonEdge.GetNextID();
+			left_edge.Add(new PointPair(left2right_point, right2left_point, new PolygonEdge(new_id, 0, 0, true)));
+			right_edge.Add(new PointPair(right2left_point, left2right_point, new PolygonEdge(new_id, 0, 0, true)));
+		}
+
 		if (left_point.Count == 0 || right_point.Count == 0)
 		{
 			return false;
@@ -550,7 +570,7 @@ public class Polygon
 		right_p.SetEdgeByPointPair(right_edge);
 		right_p.InitAll();
 
-		return false;
+		return true;
 	}
 
 	Vector2 GetCrossPoint(Vector2 l_head, Vector2 l_toe, Vector2 r_head, Vector2 r_toe)
@@ -578,32 +598,63 @@ public class FoldInfo
 // 一层多边形，可以包含多个多边形
 public class PolygonLayer : MonoBehaviour {
 	public MeshData m_meshData;
-	public List<Polygon> m_polygons; // 包含了的多边形
+	private List<Polygon> m_polygons; // 包含了的多边形
 	public Mesh m_mesh; // 实际mesh
 
 	public int m_layerDepth = 0; // 本层的高度
+	public float m_layerAnimAmp = 0.2f; // 动画的幅度
 
 	// Use this for initialization
-	void Start () {
+	void Start ()
+	{
+		if (m_polygons == null || m_polygons.Count == 0)
+		{
+			return;
+		}
+
 		CalculateMesh();
+	}
+
+	private void Update()
+	{
+		Vector3 pos = gameObject.transform.position;
+		pos.z = m_layerAnimAmp * m_layerDepth * Mathf.Cos(Time.time);
+		gameObject.transform.position = pos;
 	}
 
 	#region set polygon and mesh stuff up
 	public void SetLayerDepth(int layer_depth)
 	{
+		Debug.Log("SetLayerDepth = "+layer_depth);
 		m_layerDepth = layer_depth;
 		gameObject.name = "layer_" + layer_depth.ToString();
+		Vector3 pos = gameObject.transform.position;
+		pos.z += layer_depth * 0.2f;
+		gameObject.transform.position = pos;
 	}
 	public void ResetColorByLayerDepth(int min_depth, int max_depth)
 	{
 		float depth_lerp = max_depth == min_depth ? 1 : (m_layerDepth - min_depth) / (float)(max_depth - min_depth);
-		GetComponent<MeshRenderer>().material.SetColor("_Color", new Color(depth_lerp, 0, 0));
+		if (Application.isEditor && !Application.isPlaying)
+		{
+			GetComponent<MeshRenderer>().sharedMaterial.SetColor("_Color", new Color(depth_lerp, 0, 0));
+		}
+		else
+		{
+			GetComponent<MeshRenderer>().material.SetColor("_Color", new Color(depth_lerp, 0, 0));
+		}
 	}
 	public void SetPolygons(List<Polygon> polygons)
 	{
 		m_polygons = polygons;
 		CalculateMesh();
+		foreach(Polygon p in m_polygons)
+		{
+			p.m_parentLayer = this;
+		}
 	}
+	public int polygonCount { get { return m_polygons.Count; } }
+
 	public void DelPolygons(List<Polygon> polygons)
 	{
 		foreach (Polygon p in polygons)
@@ -671,9 +722,9 @@ public class PolygonLayer : MonoBehaviour {
 
 		GetComponent<MeshFilter>().mesh = m_mesh;
 	}
-	#endregion
+#endregion
 
-	#region find touching point and fold edge
+#region find touching point and fold edge
 	public bool FindFoldEdge(Vector2 touch_point, ref Vector2 local_touch_dir, out Vector2 local_head_pos, out Vector2 local_toe_pos)
 	{
 		local_head_pos = Vector2.zero;
@@ -688,7 +739,7 @@ public class PolygonLayer : MonoBehaviour {
 		float fold_dist = 0;
 		for (int i = 0; i != m_polygons.Count; ++i)
 		{
-			PolygonEdge edge = PolygonEdge.zero;
+			PolygonEdge edge = PolygonEdge.invalid;
 			float dist = 0;
 			if(m_polygons[i].FindCollideEdge(local_touch_dir, touch_point, ref edge, ref dist) && edge.bInside)
 			{
@@ -748,21 +799,18 @@ public class PolygonLayer : MonoBehaviour {
 #endif
 		return true;
 	}
-	#endregion
+#endregion
 
-	#region check whether can fold along the given edge towards the given dir
+#region check whether can fold along the given edge towards the given dir
 	/// <summary>
 	/// the head and toe position of the edge line.
 	/// </summary>
 	public bool GetFoldInfoWorld(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, out FoldInfo fold_info)
 	{
-		return GetFoldInfoLocal(transform.InverseTransformPoint(world_head_pos)
-			, transform.InverseTransformPoint(world_toe_pos)
-			, transform.InverseTransformVector(world_fold_dir)
-			, out fold_info);
-	}
-	public bool GetFoldInfoLocal(Vector2 local_head_pos, Vector2 local_toe_pos, Vector2 local_fold_dir, out FoldInfo fold_info)
-	{
+		Vector2 local_head_pos = transform.InverseTransformPoint(world_head_pos);
+		Vector2 local_toe_pos = transform.InverseTransformPoint(world_toe_pos);
+		Vector2 local_fold_dir = transform.InverseTransformVector(world_fold_dir);
+
 		fold_info = new FoldInfo();
 		fold_info.fold_polygons = new List<Polygon>();
 		foreach (Polygon p in m_polygons)
@@ -770,16 +818,41 @@ public class PolygonLayer : MonoBehaviour {
 			if(p.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir))
 			{
 				fold_info.fold_polygons.Add(p);
-				foreach(PolygonEdge edge in p.Edges)
+			}
+		}
+
+		foreach (Polygon p in fold_info.fold_polygons)
+		{
+			foreach (PolygonEdge edge in p.Edges)
+			{
+				if (!IsSameEdge(world_head_pos, world_toe_pos, p, edge))
 				{
-					foreach(PolygonLayer layer in edge.parent_layers)
+					foreach (Polygon polygon in PolygonEdgeMapping.GetEdgePolygons(edge.ID))
 					{
-						fold_info.linked_layers.Add(layer);
+						if(polygon.m_parentLayer == this)
+						{
+							continue;
+						}
+
+						bool already_has = false;
+						foreach(PolygonLayer pl in fold_info.linked_layers)
+						{
+							if(pl == polygon.m_parentLayer)
+							{
+								already_has = true;
+								break;
+							}
+						}
+						if (!already_has)
+						{
+							fold_info.linked_layers.Add(polygon.m_parentLayer);
+						}
 					}
 				}
 			}
 		}
-		if(fold_info.fold_polygons.Count == 0)
+
+		if (fold_info.fold_polygons.Count == 0)
 		{
 			return false;
 		}
@@ -787,16 +860,24 @@ public class PolygonLayer : MonoBehaviour {
 		return true;
 	}
 
-	#endregion
+	bool IsSameEdge(Vector2 world_head_pos, Vector2 world_toe_pos, Polygon p, PolygonEdge edge)
+	{
+		Vector2 edge_dir = p.m_points[edge.idx_head].position - p.m_points[edge.idx_toe].position;
+		Vector2 world_dir = world_head_pos - world_toe_pos;
+		float cross_value = edge_dir.x * world_dir.y - edge_dir.y * world_dir.x;
+		return Mathf.Abs(cross_value) < Mathf.Epsilon;
+	}
 
-	#region transform(fold) along edge
+#endregion
+
+#region transform(fold) along edge
 	public void TransformAlongEdge(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_direct)
 	{
 		transform.RotateAround(world_head_pos, world_toe_pos - world_head_pos, 180);
 	}
-	#endregion
+#endregion
 
-	#region cut the layer and all crossing polygon apart by a line
+#region cut the layer and all crossing polygon apart by a line
 	public void CutLayer(Vector2 local_head_pos, Vector2 local_toe_pos)
 	{
 		List<Polygon> new_polygons = new List<Polygon>();
@@ -813,13 +894,14 @@ public class PolygonLayer : MonoBehaviour {
 				new_polygons.Add(p);
 			}
 		}
-		m_polygons = new_polygons;
+		SetPolygons(new_polygons);
 	}
-	#endregion
+#endregion
 
-	#region create new fold line in runtime
-	public void AddNewEdge(int edge_id, bool bInside, Vector3 head_pos, Vector3 toe_pos)
+#region create new fold line in runtime
+	public bool AddNewEdge(int edge_id, bool bInside, Vector3 head_pos, Vector3 toe_pos)
 	{
+		bool bSucceeded = false;
 		List<Polygon> new_polygons = new List<Polygon>();
 		foreach(Polygon pl in m_polygons)
 		{
@@ -828,6 +910,7 @@ public class PolygonLayer : MonoBehaviour {
 			{
 				new_polygons.Add(left_p);
 				new_polygons.Add(right_p);
+				bSucceeded = true;
 			}
 			else
 			{
@@ -835,6 +918,54 @@ public class PolygonLayer : MonoBehaviour {
 			}
 		}
 		SetPolygons(new_polygons);
+		return bSucceeded;
 	}
-	#endregion
+#endregion
+}
+
+class PolygonEdgeMapping
+{
+	private static Dictionary<int, List<Polygon>> s_edge_mapping = new Dictionary<int, List<Polygon>>();
+	public static void AddEdgePolygon(int edge_id, Polygon polygon)
+	{
+		if(!s_edge_mapping.ContainsKey(edge_id))
+		{
+			s_edge_mapping[edge_id] = new List<Polygon>();
+		}
+
+		foreach(Polygon p in s_edge_mapping[edge_id])
+		{
+			if(p == polygon)
+			{
+				return;
+			}
+		}
+		s_edge_mapping[edge_id].Add(polygon);
+	}
+
+	public static void RemoveEdgePolygon(int edge_id, Polygon polygon)
+	{
+		if (!s_edge_mapping.ContainsKey(edge_id))
+		{
+			return;
+		}
+
+		s_edge_mapping[edge_id].Remove(polygon);
+		if(s_edge_mapping[edge_id].Count == 0)
+		{
+			s_edge_mapping.Remove(edge_id);
+		}
+	}
+
+	public static List<Polygon> GetEdgePolygons(int edge_id)
+	{
+		if(!s_edge_mapping.ContainsKey(edge_id))
+		{
+			return new List<Polygon>();
+		}
+		else
+		{
+			return s_edge_mapping[edge_id];
+		}
+	}
 }

@@ -10,12 +10,14 @@ public class OrigamiOperator
 		toe_pos = Vector3.zero;
 		touch_dir = Vector3.zero;
 		is_valid = false;
+		need_fold = false;
 	}
 	public Vector2 head_pos;
 	public Vector2 toe_pos;
 	public Vector2 touch_dir;
 
 	public bool is_valid;
+	public bool need_fold;
 }
 
 public class OrigamiCreater : MonoBehaviour {
@@ -78,10 +80,10 @@ public class OrigamiCreater : MonoBehaviour {
 		p.m_points.Add(new PolygonPoint(-1, 1));
 
 		List<PolygonEdge> edges = new List<PolygonEdge>();
-		edges.Add(new PolygonEdge(1, 0, 1, true));
-		edges.Add(new PolygonEdge(2, 1, 2, true));
-		edges.Add(new PolygonEdge(3, 2, 3, true));
-		edges.Add(new PolygonEdge(4, 3, 0, true));
+		edges.Add(new PolygonEdge(0, 1, true));
+		edges.Add(new PolygonEdge(1, 2, true));
+		edges.Add(new PolygonEdge(2, 3, true));
+		edges.Add(new PolygonEdge(3, 0, true));
 		p.SetEdgeByIndexPair(edges);
 		m_curEdgeCount = p.Edges.Count;
 
@@ -93,22 +95,36 @@ public class OrigamiCreater : MonoBehaviour {
 
 	public void CalOrigamiPaper()
 	{
-		foreach(OrigamiOperator op in m_operators)
+		for(int i = 0; i != m_operators.Count; ++i)
 		{
+			OrigamiOperator op = m_operators[i];
 			if (op.is_valid)
 			{
-				FoldPaperByLine(m_paper, op);
+				op.is_valid = FoldPaperByLine(m_paper, op);
 			}
 		}
 	}
 
-	private void FoldPaperByLine(OrigamiPaper paper, OrigamiOperator op)
+	private bool FoldPaperByLine(OrigamiPaper paper, OrigamiOperator op)
 	{
 		int cur_edge_id = m_curEdgeCount;
+		PolygonLayer main_pl = null;
 		foreach(PolygonLayer pl in paper.m_polygonLayers)
 		{
-			pl.AddNewEdge(cur_edge_id, true, op.head_pos, op.toe_pos);
+			if(pl.AddNewEdge(cur_edge_id, true, op.head_pos, op.toe_pos))
+			{
+				main_pl = pl;
+			}
 		}
-		paper.FoldByEdgeInLocalByEdge(paper.m_polygonLayers[0], op.touch_dir, op.head_pos, op.toe_pos);
+		if(main_pl == null)
+		{
+			return false;
+		}
+
+		if(op.need_fold)
+		{
+			paper.FoldByEdgeInLocalByEdge(main_pl, op.touch_dir, op.head_pos, op.toe_pos);
+		}
+		return true;
 	}
 }

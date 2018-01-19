@@ -17,6 +17,7 @@ public class OrigamiOperateInspector : Editor
 	{
 		serializedObject.Update();
 
+		bool bResetPolygon = GUILayout.Button("Recalculate", GUILayout.Width(100));
 		targetOrigami.m_pointSample = EditorGUILayout.ObjectField("point:", targetOrigami.m_pointSample, typeof(GameObject), true) as GameObject;
 		targetOrigami.m_paper = EditorGUILayout.ObjectField("paper:", targetOrigami.m_paper, typeof(OrigamiPaper), true) as OrigamiPaper;
 		targetOrigami.ResetOperatorCount(EditorGUILayout.IntField("size", targetOrigami.m_operators.Count));
@@ -32,11 +33,13 @@ public class OrigamiOperateInspector : Editor
 
 			EditorGUILayout.BeginHorizontal();
 			GUILayout.Label("index: " + i, GUILayout.Width(50));
-			op.is_valid = EditorGUILayout.Toggle(op.is_valid);
+			GUILayout.Label("valid:", GUILayout.Width(36));
+			op.is_valid = EditorGUILayout.Toggle(op.is_valid, GUILayout.Width(10));
+			GUILayout.Label("fold:", GUILayout.Width(30));
+			op.need_fold = EditorGUILayout.Toggle(op.need_fold, GUILayout.Width(10));
 			m_op_colors[i] = EditorGUILayout.ColorField(m_op_colors[i]);
 			EditorGUILayout.EndHorizontal();
 			EditorGUILayout.BeginHorizontal();
-			//op.head_pos = EditorGUILayout.Vector2Field(new GUIContent("head:","tips"), op.head_pos, GUILayout.Width(200));
 			GUILayout.Label("head:", GUILayout.Width(50));
 			op.head_pos.x = EditorGUILayout.FloatField(op.head_pos.x);
 			op.head_pos.y = EditorGUILayout.FloatField(op.head_pos.y);
@@ -52,6 +55,11 @@ public class OrigamiOperateInspector : Editor
 			op.touch_dir.y = EditorGUILayout.FloatField(op.touch_dir.y);
 			EditorGUILayout.EndHorizontal();
 			GUILayout.Space(10);
+		}
+
+		if(bResetPolygon)
+		{
+			targetOrigami.ResetOrigamiPaper();
 		}
 	}
 

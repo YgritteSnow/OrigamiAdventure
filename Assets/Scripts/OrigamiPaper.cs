@@ -67,7 +67,7 @@ public class OrigamiPaper : MonoBehaviour {
 
 	public void ClearAllPolygons()
 	{
-		List<PolygonLayer> m_polygonLayers = new List<PolygonLayer>();
+		m_polygonLayers = new List<PolygonLayer>();
 		m_minLayerDepth = 0;
 		m_maxLayerDepth = 0;
 
@@ -82,7 +82,14 @@ public class OrigamiPaper : MonoBehaviour {
 		}
 		foreach(GameObject child in children)
 		{
-			GameObject.Destroy(child);
+			if (Application.isEditor && !Application.isPlaying)
+			{
+				GameObject.DestroyImmediate(child);
+			}
+			else
+			{
+				GameObject.Destroy(child);
+			}
 		}
 	}
 
@@ -93,10 +100,6 @@ public class OrigamiPaper : MonoBehaviour {
 		new_layer.transform.parent = this.transform;
 		new_layer.SetActive(true);
 		PolygonLayer pl = new_layer.AddComponent<PolygonLayer>();
-		foreach(Polygon p in polygons)
-		{
-			p.AddEdgeParent(pl);
-		}
 		pl.SetLayerDepth(layer_depth);
 		pl.SetPolygons(polygons);
 		m_polygonLayers.Add(pl);
@@ -173,11 +176,17 @@ public class OrigamiPaper : MonoBehaviour {
 		{
 			PolygonLayer pl = fold_layers[i];
 			FoldInfo fi = fold_infos[i];
-			pl.DelPolygons(fi.fold_polygons);
-
-			PolygonLayer new_pl = CreateLayerByList(fi.fold_polygons, new_layer_depth[i]);
-			new_pl.transform.SetPositionAndRotation(pl.transform.position, pl.transform.rotation);
-			new_pl.TransformAlongEdge(world_head_pos, world_toe_pos, world_touch_dir);
+			if(pl.polygonCount == fi.fold_polygons.Count)
+			{
+				pl.TransformAlongEdge(world_head_pos, world_toe_pos, world_touch_dir);
+			}
+			else
+			{
+				pl.DelPolygons(fi.fold_polygons);
+				PolygonLayer new_pl = CreateLayerByList(fi.fold_polygons, new_layer_depth[i]);
+				new_pl.transform.SetPositionAndRotation(pl.transform.position, pl.transform.rotation);
+				new_pl.TransformAlongEdge(world_head_pos, world_toe_pos, world_touch_dir);
+			}
 		}
 	}
 
