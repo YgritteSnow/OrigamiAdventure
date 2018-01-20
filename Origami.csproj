@@ -78,12 +78,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Plugin\OrigamiCreater.cs" />
-    <Compile Include="Assets\Plugin\OrigamiOperateInspector.cs" />
+    <Compile Include="Assets\Plugin\OrigamiCreaterInspector.cs" />
+    <Compile Include="Assets\Plugin\OrigamiOperationCalculatorInspector.cs" />
     <Compile Include="Assets\Scripts\ClothCalculater.cs" />
     <Compile Include="Assets\Scripts\DebugOrigamiPaper.cs" />
+    <Compile Include="Assets\Scripts\JUtility.cs" />
     <Compile Include="Assets\Scripts\MeshPaper.cs" />
+    <Compile Include="Assets\Scripts\OrigamiCreater.cs" />
+    <Compile Include="Assets\Scripts\OrigamiOperationCalculator.cs" />
+    <Compile Include="Assets\Scripts\OrigamiOperationHandler.cs" />
     <Compile Include="Assets\Scripts\OrigamiPaper.cs" />
+    <Compile Include="Assets\Scripts\PolygonJitter.cs" />
     <Compile Include="Assets\Scripts\PolygonLayer.cs" />
   </ItemGroup>
   <ItemGroup>

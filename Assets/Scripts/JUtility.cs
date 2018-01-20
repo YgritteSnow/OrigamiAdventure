@@ -4,26 +4,53 @@ using System.Collections.Generic;
 class JUtility
 {
 	public const float Epsilon = 0.00001f;
+	public static Polygon GetRectPolygon(float width, float height)
+	{
+		Polygon p = new Polygon();
+		p.m_points = new List<PolygonPoint>();
+		p.m_points.Add(new PolygonPoint(width, height));
+		p.m_points.Add(new PolygonPoint(width, -height));
+		p.m_points.Add(new PolygonPoint(-width, -height));
+		p.m_points.Add(new PolygonPoint(-width, height));
+
+		List<PolygonEdge> edges = new List<PolygonEdge>();
+		edges.Add(new PolygonEdge(0, 1, true));
+		edges.Add(new PolygonEdge(1, 2, true));
+		edges.Add(new PolygonEdge(2, 3, true));
+		edges.Add(new PolygonEdge(3, 0, true));
+		p.SetEdgeByIndexPair(edges);
+		p.InitAll();
+
+		return p;
+	}
 }
 
+#region 二叉树结构
 /// <summary>
-/// 二叉树结构
+/// 二叉树结构，仅实现了需要的部分
 /// </summary>
 /// <typeparam name="TData"></typeparam>
 public class JBinaryTree<TData>
 {
 	public TData Data { get; set; }
+
+	// 是否是左结点：只在初始化的时候设置
+	private bool m_isLeft = false;
+	public bool IsLeft { get { return m_isLeft; } }
+
 	public JBinaryTree<TData>[] child_node;
 
-	private JBinaryTree()
+	private JBinaryTree(bool isLeft)
 	{
 		Data = default(TData);
+		m_isLeft = isLeft;
 		child_node = new JBinaryTree<TData>[2];
 	}
 
-	public JBinaryTree(TData d)
+	public JBinaryTree(bool isLeft, TData d)
 	{
 		Data = d;
+		m_isLeft = isLeft;
 		child_node = new JBinaryTree<TData>[2];
 	}
 
@@ -59,9 +86,21 @@ public class JBinaryTree<TData>
 	}
 	#endregion
 
-	public TData? GetLeftChild()
+	public bool HasLeftChild()
 	{
-		return child_node[0];
+		return child_node[0] != null;
+	}
+	public TData GetLeftChild()
+	{
+		return child_node[0].Data;
+	}
+	public bool HasRightChild()
+	{
+		return child_node[1] != null;
+	}
+	public TData GetRightChild()
+	{
+		return child_node[1].Data;
 	}
 
 	public void SetLeftChildNull()
@@ -77,7 +116,7 @@ public class JBinaryTree<TData>
 	{
 		if(child_node[0] == null)
 		{
-			child_node[0] = new JBinaryTree<TData>();
+			child_node[0] = new JBinaryTree<TData>(true);
 		}
 		child_node[0].Data = data;
 	}
@@ -85,8 +124,9 @@ public class JBinaryTree<TData>
 	{
 		if (child_node[1] == null)
 		{
-			child_node[1] = new JBinaryTree<TData>();
+			child_node[1] = new JBinaryTree<TData>(false);
 		}
 		child_node[1].Data = data;
 	}
 }
+#endregion

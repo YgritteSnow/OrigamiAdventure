@@ -66,15 +66,16 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		public Polygon polygon; // 每个结点仅有1个polygon
 	}
 
-	public GameObject m_rootObj;
+	public GameObject m_sample;
 
-	List<OrigamiOperator> m_operators;
+	List<OrigamiOperator> m_operators = new List<OrigamiOperator>();
 	JBinaryTree<OrigamiOperationNode> m_operatorTree;
 
 	// Use this for initialization
-	void Start () {
-		m_rootObj.name = "Root";
-		m_operatorTree = new JBinaryTree<OrigamiOperationNode>(new OrigamiOperationNode(m_rootObj.transform));
+	void Start ()
+	{
+		OrigamiOperationNode root = GenerateObjAndNode("root", transform, JUtility.GetRectPolygon(1,1));
+		m_operatorTree = new JBinaryTree<OrigamiOperationNode>(true, root);
 	}
 	
 	// Update is called once per frame
@@ -132,7 +133,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 	OrigamiOperationNode GenerateObjAndNode(string name, Transform parent, Polygon p)
 	{
-		GameObject new_obj = GameObject.Instantiate(m_rootObj);
+		GameObject new_obj = GameObject.Instantiate(m_sample);
 		new_obj.transform.parent = parent;
 		new_obj.GetComponent<PolygonJitter>().SetPolygon(p);
 		OrigamiOperationNode res = new OrigamiOperationNode(new_obj.transform);
@@ -154,28 +155,50 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		if(side > 0)
 		{
 			OrigamiOperationNode child;
-			//if(node. = GenerateObjAndNode("child" + side, node.Data.trans, node.Data.polygon);
-			child.edge_id = 0;
-			child.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
-
-			node.SetLeftChild(child);
-			node.SetRightChildNull();
-		}
-		else if (side < 0)
-		{
-			OrigamiOperationNode child = GenerateObjAndNode("child" + side, node.Data.trans, node.Data.polygon);
-			child.edge_id = 0;
-			child.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
-			if (side > 0)
+			if (node.HasLeftChild())
 			{
-				node.SetLeftChild(child);
-				node.SetRightChildNull();
+				child = node.GetLeftChild();
 			}
 			else
 			{
-				node.SetLeftChildNull();
-				node.SetRightChild(child);
+				child = GenerateObjAndNode("child_all_left", node.Data.trans, node.Data.polygon);
+			}
+			child.edge_id = 0;
+			node.SetLeftChild(child);
+			if (!node.IsLeft)
+			{
 				child.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
+			}
+
+			if (node.HasRightChild())
+			{
+				GameObject.Destroy(node.GetRightChild().trans.gameObject);
+				node.SetRightChildNull();
+			}
+		}
+		else if (side < 0)
+		{
+			OrigamiOperationNode child;
+			if (node.HasRightChild())
+			{
+				child = node.GetRightChild();
+				child.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+			}
+			else
+			{
+				child = GenerateObjAndNode("child_all_right", node.Data.trans, node.Data.polygon);
+			}
+			child.edge_id = 0;
+			node.SetRightChild(child);
+			if (node.IsLeft)
+			{
+				child.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
+			}
+
+			if (node.HasLeftChild())
+			{
+				GameObject.Destroy(node.GetLeftChild().trans.gameObject);
+				node.SetLeftChildNull();
 			}
 		}
 		else
@@ -184,13 +207,37 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			int cut_edge_id;
 			if (node.Data.polygon.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
 			{
-				OrigamiOperationNode left = GenerateObjAndNode("child_cut_left", node.Data.trans, left_p);
+				OrigamiOperationNode right;
+				if (node.HasRightChild())
+				{
+					right = node.GetRightChild();
+					right.polygon = right_p;
+					right.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+					right.trans.GetComponent<PolygonJitter>().SetPolygon(right_p);
+				}
+				else
+				{
+					right = GenerateObjAndNode("child_cut_right", node.Data.trans, right_p);
+				}
+				OrigamiOperationNode left;
+				if (node.HasLeftChild())
+				{
+					left = node.GetLeftChild();
+					left.polygon = left_p;
+					left.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+					left.trans.GetComponent<PolygonJitter>().SetPolygon(left_p);
+				}
+				else
+				{
+					left = GenerateObjAndNode("child_cut_left", node.Data.trans, left_p);
+				}
+
 				left.edge_id = cut_edge_id;
 				node.SetLeftChild(left);
-
-				OrigamiOperationNode right = GenerateObjAndNode("child_cut_right", node.Data.trans, right_p);
 				right.edge_id = cut_edge_id;
 				node.SetRightChild(right);
+
+				(node.IsLeft ? right : left).trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
 			}
 			else
 			{
