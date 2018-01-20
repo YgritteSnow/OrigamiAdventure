@@ -1,38 +1,11 @@
-﻿using System.Collections;
+﻿/**
+ * （非二叉树版逐步创建折纸的类，建议使用 OrigamiOperationCalculator 相关）
+ * 仅用作创建折痕的debug工具，设置操作，直接输出结果
+ */
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-public class OrigamiOperator
-{
-	public OrigamiOperator()
-	{
-		head_pos = Vector3.zero;
-		toe_pos = Vector3.zero;
-		touch_dir = Vector3.zero;
-		is_valid = true;
-		need_fold = true;
-	}
-	public Vector2 head_pos;
-	public Vector2 toe_pos;
-	public Vector2 touch_dir;
-
-	public Vector2 normalised_touch_dir
-	{
-		get
-		{
-			Vector2 res = head_pos - toe_pos;
-			res = new Vector2(res.y, -res.x);
-			if(Vector2.Dot(res, touch_dir) < 0)
-			{
-				res = -res;
-			}
-			res.Normalize();
-			return res;
-		}
-	}
-	public bool is_valid;
-	public bool need_fold;
-}
 
 public class OrigamiCreater : MonoBehaviour {
 	public List<OrigamiOperator> m_operators = new List<OrigamiOperator>();
