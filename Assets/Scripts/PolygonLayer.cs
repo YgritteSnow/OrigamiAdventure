@@ -81,21 +81,12 @@ public class Polygon
 	private List<PolygonEdge> m_edges; // 多边形的边
 	public List<PolygonEdge> Edges { get { return m_edges; } }
 
-	public List<Matrix4x4> m_transHistory; // 进行过的所有位置变换
-	public Matrix4x4 m_curTrans; // 当前位置
-
 	public PolygonLayer m_parentLayer = null; // 所属的 PolygonLayer
 
 	public MeshData m_meshData;
-	public void InitTrans()
-	{
-		m_curTrans = Matrix4x4.identity;
-		m_transHistory = new List<Matrix4x4>();
-	}
 
 	public void InitAll()
 	{
-		InitTrans();
 		CalEdgeDistance();
 		CalculateMesh();
 		InitEdgeParent();
@@ -444,25 +435,44 @@ public class Polygon
 	#endregion
 
 	#region 折叠要求多边形的所有顶点都在需要折叠的一侧
-	public bool CheckAllOneSide(Vector2 head_pos, Vector2 toe_pos, Vector2 fold_dir)
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <returns> 1(全在左侧); -1(全在右侧); 0(其他) </returns>
+	public int CheckAllOneSide(Vector2 local_head_pos, Vector2 local_toe_pos, Vector2 local_fold_dir)
 	{
+		int cur_side = 0;
 		foreach (PolygonPoint p in m_points)
 		{
-			Vector2 point_dir = head_pos - p.position;
-			if (Vector2.Dot(point_dir, fold_dir) < -JUtility.Epsilon)
+			Vector2 point_dir = local_head_pos - p.position;
+			float cur_param = Vector2.Dot(point_dir, local_fold_dir);
+			if (cur_param > -JUtility.Epsilon && cur_param < JUtility.Epsilon)
 			{
-				return false;
+				continue;
+			}
+			else
+			{
+				int sign = System.Math.Sign(cur_param);
+				if(cur_side == 0)
+				{
+					cur_side = sign;
+				}
+				else if(cur_side != sign)
+				{
+					return 0;
+				}
 			}
 		}
-		return true;
+		return cur_side;
 	}
 	#endregion
 
 	#region 检查多边形沿着一条线切成两个的可行性
-	public bool CutPolygon(Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p)
+	public bool CutPolygon(Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
 	{
 		left_p = new Polygon();
 		right_p = new Polygon();
+		cut_edge_id = -1;
 
 		Vector2 head_toe = toe_pos - head_pos;
 		Vector2 ver_dir = new Vector2(head_toe.y, -head_toe.x);
@@ -557,11 +567,11 @@ public class Polygon
 			left_point.Add(left2right_point);
 			right_point.Add(left2right_point);
 			int new_id = PolygonEdge.GetNextID();
+			cut_edge_id = new_id;
 			left_edge.Add(new PointPair(left2right_point, right2left_point, new PolygonEdge(new_id, 0, 0, true)));
 			right_edge.Add(new PointPair(right2left_point, left2right_point, new PolygonEdge(new_id, 0, 0, true)));
 		}
-
-		if (left_point.Count == 0 || right_point.Count == 0)
+		else
 		{
 			return false;
 		}
@@ -817,7 +827,7 @@ public class PolygonLayer : MonoBehaviour {
 		fold_info.fold_polygons = new List<Polygon>();
 		foreach (Polygon p in m_polygons)
 		{
-			if(p.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir))
+			if(p.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir) > 0)
 			{
 				fold_info.fold_polygons.Add(p);
 			}
@@ -886,7 +896,8 @@ public class PolygonLayer : MonoBehaviour {
 		foreach(Polygon p in m_polygons)
 		{
 			Polygon left_p, right_p;
-			if(p.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p))
+			int cut_edge_id;
+			if(p.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
 			{
 				new_polygons.Add(left_p);
 				new_polygons.Add(right_p);
@@ -910,7 +921,8 @@ public class PolygonLayer : MonoBehaviour {
 		foreach (Polygon pl in m_polygons)
 		{
 			Polygon left_p, right_p;
-			if(pl.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p))
+			int cut_edge_id;
+			if(pl.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
 			{
 				new_polygons.Add(left_p);
 				new_polygons.Add(right_p);

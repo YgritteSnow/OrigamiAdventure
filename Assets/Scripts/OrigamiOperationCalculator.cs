@@ -41,19 +41,167 @@ public class OrigamiOperator
 /// 计算和保存操作结果
 /// </summary>
 public class OrigamiOperationCalculator : MonoBehaviour {
-	public struct OrigamiOperationNode
+	public class OrigamiOperationNode
 	{
-		Polygon polygon; // 每个结点仅有1个polygon
+		private OrigamiOperationNode()
+		{
+			trans = null;
+			edge_id = 0;
+			fold_angle = 0;
+			polygon = default(Polygon);
+		}
+
+		public OrigamiOperationNode(Transform t)
+		{
+			trans = t;
+			edge_id = 0;
+			fold_angle = 0;
+			polygon = default(Polygon);
+		}
+
+		public Transform trans;
+		public int edge_id; // 沿着其折叠的边的id
+		public float fold_angle; // 折叠的角度
+
+		public Polygon polygon; // 每个结点仅有1个polygon
 	}
-	public Tree<OrigamiOperationNode> m_tree;
+
+	public GameObject m_rootObj;
+
+	List<OrigamiOperator> m_operators;
+	JBinaryTree<OrigamiOperationNode> m_operatorTree;
 
 	// Use this for initialization
 	void Start () {
-		
+		m_rootObj.name = "Root";
+		m_operatorTree = new JBinaryTree<OrigamiOperationNode>(new OrigamiOperationNode(m_rootObj.transform));
 	}
 	
 	// Update is called once per frame
 	void Update () {
 		
 	}
+
+	#region 对外的添加、修改、删除函数
+	public bool AddOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir)
+	{
+		OrigamiOperator op = new OrigamiOperator();
+		op.head_pos = world_head_pos;
+		op.toe_pos = world_toe_pos;
+		op.touch_dir = world_fold_dir;
+		op.is_valid = true;
+		op.need_fold = true;
+		m_operators.Add(op);
+
+		TraverseSetLastOperator(op);
+
+		return true;
+	}
+
+	public bool ChangeLastOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir)
+	{
+		if(m_operators.Count == 0)
+		{
+			Debug.LogError("no operator!");
+		}
+
+		OrigamiOperator op = m_operators[m_operators.Count - 1];
+		op.head_pos = world_head_pos;
+		op.toe_pos = world_toe_pos;
+		op.touch_dir = world_fold_dir;
+		op.is_valid = true;
+		op.need_fold = true;
+
+		TraverseSetLastOperator(op);
+
+		return true;
+	}
+	#endregion
+
+	#region 增删改所用的一些函数
+	bool TraverseSetLastOperator(OrigamiOperator op)
+	{
+		m_operatorTree.TraverseOneDepthWithCheck(m_operators.Count - 1
+			, delegate (JBinaryTree<OrigamiOperationNode> node)
+				{
+					return SetOperatorForNode(node, op);
+				});
+
+		return true;
+	}
+
+	OrigamiOperationNode GenerateObjAndNode(string name, Transform parent, Polygon p)
+	{
+		GameObject new_obj = GameObject.Instantiate(m_rootObj);
+		new_obj.transform.parent = parent;
+		new_obj.GetComponent<PolygonJitter>().SetPolygon(p);
+		OrigamiOperationNode res = new OrigamiOperationNode(new_obj.transform);
+		res.polygon = p;
+		res.fold_angle = 0;
+		return res;
+	}
+
+	/// <summary>
+	/// 为node计算并添加操作。
+	/// 通常情况下不应该在遍历时直接修改树，但是这里的操作内容不会影响遍历结果，所以直接这么搞了嗯嗯嗯
+	/// </summary>
+	bool SetOperatorForNode(JBinaryTree<OrigamiOperationNode> node, OrigamiOperator op)
+	{
+		Vector2 local_head_pos = node.Data.trans.InverseTransformPoint(op.head_pos);
+		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
+		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
+		int side = node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
+		if(side > 0)
+		{
+			OrigamiOperationNode child;
+			//if(node. = GenerateObjAndNode("child" + side, node.Data.trans, node.Data.polygon);
+			child.edge_id = 0;
+			child.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+
+			node.SetLeftChild(child);
+			node.SetRightChildNull();
+		}
+		else if (side < 0)
+		{
+			OrigamiOperationNode child = GenerateObjAndNode("child" + side, node.Data.trans, node.Data.polygon);
+			child.edge_id = 0;
+			child.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+			if (side > 0)
+			{
+				node.SetLeftChild(child);
+				node.SetRightChildNull();
+			}
+			else
+			{
+				node.SetLeftChildNull();
+				node.SetRightChild(child);
+				child.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
+			}
+		}
+		else
+		{
+			Polygon left_p, right_p;
+			int cut_edge_id;
+			if (node.Data.polygon.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
+			{
+				OrigamiOperationNode left = GenerateObjAndNode("child_cut_left", node.Data.trans, left_p);
+				left.edge_id = cut_edge_id;
+				node.SetLeftChild(left);
+
+				OrigamiOperationNode right = GenerateObjAndNode("child_cut_right", node.Data.trans, right_p);
+				right.edge_id = cut_edge_id;
+				node.SetRightChild(right);
+			}
+			else
+			{
+				Debug.LogError("Cannot cut polygon!!!");
+			}
+		}
+
+		node.Data.trans.GetComponent<PolygonJitter>().ShowPolygon(false);
+		return true;
+	}
+	#endregion
+
+
 }
