@@ -9,13 +9,27 @@ public class OrigamiOperator
 		head_pos = Vector3.zero;
 		toe_pos = Vector3.zero;
 		touch_dir = Vector3.zero;
-		is_valid = false;
-		need_fold = false;
+		is_valid = true;
+		need_fold = true;
 	}
 	public Vector2 head_pos;
 	public Vector2 toe_pos;
 	public Vector2 touch_dir;
 
+	public Vector2 normalised_touch_dir
+	{
+		get
+		{
+			Vector2 res = head_pos - toe_pos;
+			res = new Vector2(res.y, -res.x);
+			if(Vector2.Dot(res, touch_dir) < 0)
+			{
+				res = -res;
+			}
+			res.Normalize();
+			return res;
+		}
+	}
 	public bool is_valid;
 	public bool need_fold;
 }
@@ -111,7 +125,7 @@ public class OrigamiCreater : MonoBehaviour {
 		PolygonLayer main_pl = null;
 		foreach(PolygonLayer pl in paper.m_polygonLayers)
 		{
-			if(pl.AddNewEdge(cur_edge_id, true, op.head_pos, op.toe_pos))
+			if(pl.AddNewEdgeInWorld(cur_edge_id, true, op.head_pos, op.toe_pos))
 			{
 				main_pl = pl;
 			}
@@ -123,7 +137,7 @@ public class OrigamiCreater : MonoBehaviour {
 
 		if(op.need_fold)
 		{
-			paper.FoldByEdgeInLocalByEdge(main_pl, op.touch_dir, op.head_pos, op.toe_pos);
+			paper.FoldByEdgeInWorldByEdge(main_pl, op.normalised_touch_dir, op.head_pos, op.toe_pos);
 		}
 		return true;
 	}

@@ -233,7 +233,7 @@ public class Polygon
 					head_dir.Normalize();
 					toe_dir.Normalize();
 					float angle = Vector2.Dot(head_dir, toe_dir);
-					if (angle < min_dot_angle - Mathf.Epsilon) // 小于
+					if (angle < min_dot_angle - JUtility.Epsilon) // 小于
 					{
 						min_dot_angle = angle;
 						final_head_idx = head_idx;
@@ -241,7 +241,7 @@ public class Polygon
 						final_head_dist = head_dist;
 						final_toe_dist = toe_dist;
 					}
-					else if (angle < min_dot_angle + Mathf.Epsilon) // 等于
+					else if (angle < min_dot_angle + JUtility.Epsilon) // 等于
 					{
 						if (head_dist <= final_head_dist && toe_dist <= final_toe_dist)
 						{
@@ -286,13 +286,13 @@ public class Polygon
 			float next_dist = next_dir.sqrMagnitude;
 			next_dir.Normalize();
 			float next_dot = Vector2.Dot(last_dir, next_dir);
-			if (next_dot < min_dot_angle - Mathf.Epsilon)
+			if (next_dot < min_dot_angle - JUtility.Epsilon)
 			{
 				min_dot_angle = next_dot;
 				final_idx = idx;
 				min_dist = next_dist;
 			}
-			else if (next_dot < min_dot_angle + Mathf.Epsilon)
+			else if (next_dot < min_dot_angle + JUtility.Epsilon)
 			{
 				if (next_dist < min_dist)
 				{
@@ -391,7 +391,7 @@ public class Polygon
 			Vector2 next_dir = m_points[(i + 1) % total_count].position - cur_pos;
 			Vector2 cur_dir = point - cur_pos;
 			float cross_result = Vector3.Dot(Vector3.Cross(cur_dir, last_dir), Vector3.Cross(next_dir, cur_dir));
-			if (cross_result < Mathf.Epsilon)
+			if (cross_result < JUtility.Epsilon)
 			{
 				return false;
 			}
@@ -413,7 +413,7 @@ public class Polygon
 			Vector2 edge_dir = toe_pos - head_pos;
 			Vector2 ray_dir_ver = new Vector2(ray_direct.y, -ray_direct.x);
 			float edge_dot = Vector2.Dot(ray_dir_ver, edge_dir);
-			if (Mathf.Abs(edge_dot) < Mathf.Epsilon)
+			if (Mathf.Abs(edge_dot) < JUtility.Epsilon)
 			{
 				continue; // 射线与边平行
 			}
@@ -449,7 +449,7 @@ public class Polygon
 		foreach (PolygonPoint p in m_points)
 		{
 			Vector2 point_dir = head_pos - p.position;
-			if (Vector2.Dot(point_dir, fold_dir) < -Mathf.Epsilon)
+			if (Vector2.Dot(point_dir, fold_dir) < -JUtility.Epsilon)
 			{
 				return false;
 			}
@@ -461,7 +461,6 @@ public class Polygon
 	#region 检查多边形沿着一条线切成两个的可行性
 	public bool CutPolygon(Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p)
 	{
-		// 这里！！！查一下当线条恰好和mesh的边缘重叠时的报错
 		left_p = new Polygon();
 		right_p = new Polygon();
 
@@ -485,7 +484,7 @@ public class Polygon
 
 			float last_dir_param = Vector2.Dot(last_p.position - head_pos, ver_dir);
 			float dir_param = Vector2.Dot(p.position - head_pos, ver_dir);
-			if (dir_param <= -Mathf.Epsilon && last_dir_param > Mathf.Epsilon)
+			if (dir_param <= -JUtility.Epsilon && last_dir_param > JUtility.Epsilon)
 			{// 右 - 交 - 左
 				Vector2 new_point = GetCrossPoint(last_p.position, p.position, head_pos, toe_pos);
 				right2left_point = new PolygonPoint(new_point.x, new_point.y);
@@ -496,9 +495,9 @@ public class Polygon
 				left_edge.Add(new PointPair(right2left_point, p, e));
 				right_edge.Add(new PointPair(last_p, right2left_point, e));
 			}
-			else if (dir_param > Mathf.Epsilon && last_dir_param <= -Mathf.Epsilon)
+			else if (dir_param > JUtility.Epsilon && last_dir_param <= -JUtility.Epsilon)
 			{// 左 - 交 - 右
-				Vector2 new_point = GetCrossPoint(m_points[i - 1].position, p.position, head_pos, toe_pos);
+				Vector2 new_point = GetCrossPoint(last_p.position, p.position, head_pos, toe_pos);
 				left2right_point = new PolygonPoint(new_point.x, new_point.y);
 
 				//left_point.Add(left2right_point);
@@ -507,39 +506,43 @@ public class Polygon
 				right_edge.Add(new PointPair(left2right_point, p, e));
 				left_edge.Add(new PointPair(last_p, left2right_point, e));
 			}
-			else if (dir_param <= -Mathf.Epsilon && last_dir_param <= -Mathf.Epsilon)
+			else if (dir_param <= -JUtility.Epsilon && last_dir_param <= -JUtility.Epsilon)
 			{// 左 - 左
 				left_point.Add(p);
 				left_edge.Add(new PointPair(last_p, p, e));
 			}
-			else if (dir_param > Mathf.Epsilon && last_dir_param > Mathf.Epsilon)
+			else if (dir_param > JUtility.Epsilon && last_dir_param > JUtility.Epsilon)
 			{// 右 - 右
 				right_point.Add(p);
 				right_edge.Add(new PointPair(last_p, p, e));
 			}
-			else if (dir_param > -Mathf.Epsilon && dir_param <= Mathf.Epsilon)
+			else if (dir_param > -JUtility.Epsilon && dir_param <= JUtility.Epsilon)
 			{// 中
-				if (last_dir_param <= -Mathf.Epsilon)
+				if (last_dir_param <= -JUtility.Epsilon)
 				{// 左 - 中
 					left_edge.Add(new PointPair(last_p, p, e));
+
+					left2right_point = p;
 				}
-				else if (last_dir_param > Mathf.Epsilon)
+				else if (last_dir_param > JUtility.Epsilon)
 				{// 右 - 中
 					right_edge.Add(new PointPair(last_p, p, e));
+
+					right2left_point = p;
 				}
 				else
 				{
 					return false;
 				}
 			}
-			else if (last_dir_param > -Mathf.Epsilon && last_dir_param <= Mathf.Epsilon)
+			else if (last_dir_param > -JUtility.Epsilon && last_dir_param <= JUtility.Epsilon)
 			{// ?
-				if (dir_param <= -Mathf.Epsilon)
+				if (dir_param <= -JUtility.Epsilon)
 				{// 中 - 左
 					left_point.Add(p);
 					left_edge.Add(new PointPair(last_p, p, e));
 				}
-				else if (dir_param > Mathf.Epsilon)
+				else if (dir_param > JUtility.Epsilon)
 				{// 中 - 右
 					right_point.Add(p);
 					right_edge.Add(new PointPair(last_p, p, e));
@@ -602,7 +605,7 @@ public class PolygonLayer : MonoBehaviour {
 	public Mesh m_mesh; // 实际mesh
 
 	public int m_layerDepth = 0; // 本层的高度
-	public float m_layerAnimAmp = 0.2f; // 动画的幅度
+	public float m_layerAnimAmp = 0.1f; // 动画的幅度
 
 	// Use this for initialization
 	void Start ()
@@ -618,14 +621,13 @@ public class PolygonLayer : MonoBehaviour {
 	private void Update()
 	{
 		Vector3 pos = gameObject.transform.position;
-		pos.z = m_layerAnimAmp * m_layerDepth * Mathf.Cos(Time.time);
+		pos.z = m_layerAnimAmp * m_layerDepth;// * (Mathf.Cos(Time.time) + 1);
 		gameObject.transform.position = pos;
 	}
 
 	#region set polygon and mesh stuff up
 	public void SetLayerDepth(int layer_depth)
 	{
-		Debug.Log("SetLayerDepth = "+layer_depth);
 		m_layerDepth = layer_depth;
 		gameObject.name = "layer_" + layer_depth.ToString();
 		Vector3 pos = gameObject.transform.position;
@@ -729,7 +731,7 @@ public class PolygonLayer : MonoBehaviour {
 	{
 		local_head_pos = Vector2.zero;
 		local_toe_pos = Vector2.zero;
-		if (local_touch_dir.magnitude < Mathf.Epsilon)
+		if (local_touch_dir.magnitude < JUtility.Epsilon)
 		{
 			return false;
 		}
@@ -768,7 +770,7 @@ public class PolygonLayer : MonoBehaviour {
 		Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 		Vector3 new_pos = transform.InverseTransformPoint(ray.origin);
 		Vector3 new_dir = transform.InverseTransformDirection(ray.direction);
-		if(Mathf.Abs(new_dir.z) < Mathf.Epsilon)
+		if(Mathf.Abs(new_dir.z) < JUtility.Epsilon)
 		{
 			return false;
 		}
@@ -865,7 +867,7 @@ public class PolygonLayer : MonoBehaviour {
 		Vector2 edge_dir = p.m_points[edge.idx_head].position - p.m_points[edge.idx_toe].position;
 		Vector2 world_dir = world_head_pos - world_toe_pos;
 		float cross_value = edge_dir.x * world_dir.y - edge_dir.y * world_dir.x;
-		return Mathf.Abs(cross_value) < Mathf.Epsilon;
+		return Mathf.Abs(cross_value) < JUtility.Epsilon;
 	}
 
 #endregion
@@ -899,14 +901,16 @@ public class PolygonLayer : MonoBehaviour {
 #endregion
 
 #region create new fold line in runtime
-	public bool AddNewEdge(int edge_id, bool bInside, Vector3 head_pos, Vector3 toe_pos)
+	public bool AddNewEdgeInWorld(int edge_id, bool bInside, Vector3 world_head_pos, Vector3 world_toe_pos)
 	{
 		bool bSucceeded = false;
 		List<Polygon> new_polygons = new List<Polygon>();
-		foreach(Polygon pl in m_polygons)
+		Vector2 local_head_pos = transform.InverseTransformPoint(world_head_pos);
+		Vector2 local_toe_pos = transform.InverseTransformPoint(world_toe_pos);
+		foreach (Polygon pl in m_polygons)
 		{
 			Polygon left_p, right_p;
-			if(pl.CutPolygon(head_pos, toe_pos, out left_p, out right_p))
+			if(pl.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p))
 			{
 				new_polygons.Add(left_p);
 				new_polygons.Add(right_p);

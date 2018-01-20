@@ -223,17 +223,14 @@ public class OrigamiPaper : MonoBehaviour {
 		return true;
 	}
 
-	public void FoldByEdgeInLocalByEdge(PolygonLayer pl, Vector2 local_touch_dir, Vector2 local_head_pos, Vector2 local_toe_pos)
+	public void FoldByEdgeInWorldByEdge(PolygonLayer pl, Vector2 world_fold_dir, Vector2 world_head_pos, Vector2 world_toe_pos)
 	{
 		List<PolygonLayer> fold_layers;
 		List<FoldInfo> fold_infos;
-		Vector2 world_head_pos = pl.transform.TransformPoint(local_head_pos);
-		Vector2 world_toe_pos = pl.transform.TransformPoint(local_toe_pos);
-		Vector2 world_touch_dir = pl.transform.TransformVector(local_touch_dir);
-		bool can_fold = CheckNeedFoldLayersWorld(pl, world_head_pos, world_toe_pos, world_touch_dir, out fold_layers, out fold_infos);
+		bool can_fold = CheckNeedFoldLayersWorld(pl, world_head_pos, world_toe_pos, world_fold_dir, out fold_layers, out fold_infos);
 		if (can_fold)
 		{
-			FormatNewLayersWorld(fold_layers, fold_infos, world_head_pos, world_toe_pos, world_touch_dir, FromUpside());
+			FormatNewLayersWorld(fold_layers, fold_infos, world_head_pos, world_toe_pos, world_fold_dir, FromUpside());
 		}
 	}
 
