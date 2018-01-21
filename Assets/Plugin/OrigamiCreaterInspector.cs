@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
+[System.Obsolete("Use binary-tree instead", true)]
 [CustomEditor(typeof(OrigamiCreater))]
 public class OrigamiOperateInspector : Editor
 {

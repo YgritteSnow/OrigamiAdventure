@@ -57,19 +57,18 @@ public class OrigamiOperationHandler : MonoBehaviour {
 	{
 		m_press_startPos = Vector2.zero;
 		m_press_curPos = Vector2.zero;
-		m_isFolding = false;
 	}
 
 	void OnPressing2()
 	{
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(Vector2.right, -Vector2.right, Vector2.up);
+			m_calculator.AddOperation(new Vector2(2, -1), new Vector2(2, 1), Vector2.up);
 			m_isFolding = true;
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(Vector2.right, -Vector2.right, Vector2.up);
+			m_calculator.ChangeLastOperation(new Vector2(2, -1), new Vector2(2, 1), Vector2.up);
 		}
 	}
 

@@ -8,6 +8,16 @@ public struct MeshData
 	public Vector2[] m_uvs;
 	public int[] m_triangles;
 	public Vector3[] m_normals; // 缓存法线
+
+	//[Obsolete("")]
+	//private MeshData Clone()
+	//{
+	//	MeshData res = new MeshData();
+	//	res.m_vertices = m_vertices.Clone() as Vector3[];
+	//	res.m_uvs = m_uvs.Clone() as Vector2[];
+	//	res.m_triangles = m_triangles.Clone() as int[];
+	//	return res;
+	//}
 }
 
 public class MeshPaper : MonoBehaviour {

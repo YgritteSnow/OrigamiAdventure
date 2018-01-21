@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PolygonJitter : MonoBehaviour {
-	public bool m_bShow = true;
-
-	public MeshData m_meshData;
 	public Mesh m_mesh = null;
+
+	private MeshData m_meshData;
+	private bool m_bShow = true;
+	public int m_polygon_depth = 0;
 
 	// Use this for initialization
 	void Start () {
@@ -15,18 +16,27 @@ public class PolygonJitter : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		
+		Vector3 pos = transform.position;
+		pos.z = m_polygon_depth * (0.2f + 0.1f * Mathf.Cos(Time.time));
+		transform.position = pos;
+
+		if (true) return;
+		if (m_mesh != null)
+		{
+			m_meshData.m_vertices[0].z = Mathf.Cos(Time.time);
+
+			m_mesh.vertices = m_meshData.m_vertices;
+			m_mesh.uv = m_meshData.m_uvs;
+			m_mesh.triangles = m_meshData.m_triangles;
+
+			m_mesh.RecalculateNormals();
+
+			GetComponent<MeshFilter>().mesh = m_mesh;
+		}
 	}
 
 	public void SetPolygon(Polygon p)
 	{
-		m_meshData = p.m_meshData;
-
-		//m_meshData.m_vertices = p.m_meshData.m_vertices.Clone() as Vector3[];
-		//m_meshData.m_uvs = p.m_meshData.m_uvs.Clone() as Vector2[];
-		//m_meshData.m_triangles = p.m_meshData.m_triangles.Clone() as int[];
-		
-		// 创建mesh
 		if (m_mesh == null)
 		{
 			m_mesh = new Mesh();
@@ -35,6 +45,8 @@ public class PolygonJitter : MonoBehaviour {
 		{
 			m_mesh.Clear();
 		}
+
+		m_meshData = p.m_meshData;
 		m_mesh.vertices = m_meshData.m_vertices;
 		m_mesh.uv = m_meshData.m_uvs;
 		m_mesh.triangles = m_meshData.m_triangles;
@@ -43,6 +55,11 @@ public class PolygonJitter : MonoBehaviour {
 
 		GetComponent<MeshFilter>().mesh = m_mesh;
 		return;
+	}
+
+	public void SetPolygonDepth(int depth)
+	{
+		m_polygon_depth = depth;
 	}
 
 	public void ShowPolygon(bool bShow)

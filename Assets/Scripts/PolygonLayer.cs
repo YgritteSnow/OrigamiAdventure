@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Reflection;
 
 #region Struct for Polygon points and edges
 public class PolygonPoint
@@ -40,6 +41,8 @@ public class PolygonEdge
 		idx_head = h;
 		idx_toe = t;
 		bInside = inside;
+
+		depth = 0;
 	}
 
 	public PolygonEdge(int id, int h, int t, bool inside)
@@ -48,6 +51,17 @@ public class PolygonEdge
 		idx_head = h;
 		idx_toe = t;
 		bInside = inside;
+
+		depth = 0;
+	}
+
+	public PolygonEdge(int id, int h, int t, bool inside, int d)
+	{
+		ID = id;
+		idx_head = h;
+		idx_toe = t;
+		bInside = inside;
+		depth = d;
 	}
 	public int ID; // 边的id
 	public int idx_head; // 顶点索引
@@ -55,8 +69,9 @@ public class PolygonEdge
 	public bool bInside; // 是否是内部的折痕边
 
 	public float distance; // 边的长度
+	public int depth; // 边的深度：初始化时为0，在折叠时，每次折叠，深度+1
 
-	public static PolygonEdge invalid { get{ return new PolygonEdge(0, -1, -1, false); } }
+	public static PolygonEdge invalid = new PolygonEdge(0, -1, -1, false);
 }
 
 /// <summary>
@@ -80,6 +95,7 @@ public class Polygon
 	public List<PolygonPoint> m_points; // 多边形的点
 	private List<PolygonEdge> m_edges; // 多边形的边
 	public List<PolygonEdge> Edges { get { return m_edges; } }
+	public Vector4 m_originBounds; // 最初的边界，用以计算uv
 
 	public PolygonLayer m_parentLayer = null; // 所属的 PolygonLayer
 
@@ -125,7 +141,7 @@ public class Polygon
 		for (int idx = 0; idx < point_pairs.Count; ++idx)
 		{
 			PointPair point_pair = point_pairs[idx];
-			m_edges.Add(new PolygonEdge(point_pair.old_edge.ID, _FindPointIndex(point_pair.head_point), _FindPointIndex(point_pair.toe_point), point_pair.old_edge.bInside));
+			m_edges.Add(new PolygonEdge(point_pair.old_edge.ID, _FindPointIndex(point_pair.head_point), _FindPointIndex(point_pair.toe_point), point_pair.old_edge.bInside, point_pair.old_edge.depth));
 		}
 	}
 	public void CalculateMesh()
@@ -148,8 +164,9 @@ public class Polygon
 		// 从一个点出发，构建所有的三角形
 		SetTriangleList(ref point_line, ref m_meshData.m_triangles);
 
-		// 计算包围盒长方形，并把坐标投射到包围盒长方形中，作为uv坐标
-		CalUVByProjectToBound(CalculateBoundRect(), ref m_meshData.m_uvs);
+		// 根据包围盒计算uv（这部分在新建 polygon 的过程中，专门调用 Set 函数来设置，并更新 uv
+		// CalUVByProjectToBound(CalculateBoundRect(), ref m_meshData.m_uvs);
+		// CalUVByProjectToBound(m_originBounds, ref m_meshData.m_uvs);
 	}
 
 	public void InitEdgeParent()
@@ -325,7 +342,7 @@ public class Polygon
 	/// <summary>
 	/// 计算包围盒长方形
 	/// </summary>
-	Vector4 CalculateBoundRect()
+	public Vector4 CalculateBoundRect()
 	{
 		float left, right, top, bottom;
 		if (m_points.Count == 0)
@@ -347,11 +364,21 @@ public class Polygon
 		return new Vector4(left, right, top, bottom);
 	}
 
+	public void SetOriginalBounds(Vector4 bounds)
+	{
+		m_originBounds = bounds;
+		CalUVByProjectToBound(m_originBounds, ref m_meshData.m_uvs);
+	}
 	/// <summary>
-	/// 把坐标投射到包围盒长方形中，作为uv坐标
+	/// 使用包围盒作为纹理映射的边界，自动计算所有uv坐标。
 	/// </summary>
 	void CalUVByProjectToBound(Vector4 bound, ref Vector2[] uvs)
 	{
+		if(bound == null)
+		{
+			return;
+		}
+
 		uvs = new Vector2[m_points.Count];
 		if (m_points.Count == 0)
 		{
@@ -468,7 +495,13 @@ public class Polygon
 	#endregion
 
 	#region 检查多边形沿着一条线切成两个的可行性
+	[System.Obsolete("Be sure to set the right depth for new edge in order to support animation in PolygonJitter", true)]
 	public bool CutPolygon(Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
+	{
+		return CutPolygon(0, head_pos, toe_pos, out left_p, out right_p, out cut_edge_id);
+	}
+
+	public bool CutPolygon(int edge_depth, Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
 	{
 		left_p = new Polygon();
 		right_p = new Polygon();
@@ -568,8 +601,8 @@ public class Polygon
 			right_point.Add(left2right_point);
 			int new_id = PolygonEdge.GetNextID();
 			cut_edge_id = new_id;
-			left_edge.Add(new PointPair(left2right_point, right2left_point, new PolygonEdge(new_id, 0, 0, true)));
-			right_edge.Add(new PointPair(right2left_point, left2right_point, new PolygonEdge(new_id, 0, 0, true)));
+			left_edge.Add(new PointPair(left2right_point, right2left_point, new PolygonEdge(new_id, 0, 0, true, edge_depth)));
+			right_edge.Add(new PointPair(right2left_point, left2right_point, new PolygonEdge(new_id, 0, 0, true, edge_depth)));
 		}
 		else
 		{
@@ -579,9 +612,12 @@ public class Polygon
 		left_p.m_points = left_point;
 		left_p.SetEdgeByPointPair(left_edge);
 		left_p.InitAll();
+		left_p.SetOriginalBounds(m_originBounds);
+
 		right_p.m_points = right_point;
 		right_p.SetEdgeByPointPair(right_edge);
 		right_p.InitAll();
+		right_p.SetOriginalBounds(m_originBounds);
 
 		return true;
 	}
@@ -887,9 +923,10 @@ public class PolygonLayer : MonoBehaviour {
 	{
 		transform.RotateAround(world_head_pos, world_toe_pos - world_head_pos, 180);
 	}
-#endregion
+	#endregion
 
-#region cut the layer and all crossing polygon apart by a line
+	#region cut the layer and all crossing polygon apart by a line
+	[System.Obsolete("Use binary-tree instead", true)]
 	public void CutLayer(Vector2 local_head_pos, Vector2 local_toe_pos)
 	{
 		List<Polygon> new_polygons = new List<Polygon>();
@@ -909,10 +946,11 @@ public class PolygonLayer : MonoBehaviour {
 		}
 		SetPolygons(new_polygons);
 	}
-#endregion
+	#endregion
 
-#region create new fold line in runtime
-	public bool AddNewEdgeInWorld(int edge_id, bool bInside, Vector3 world_head_pos, Vector3 world_toe_pos)
+	#region create new fold line in runtime
+	[System.Obsolete("Use binary-tree instead", true)]
+	public bool AddNewEdgeInWorld(bool bInside, Vector3 world_head_pos, Vector3 world_toe_pos)
 	{
 		bool bSucceeded = false;
 		List<Polygon> new_polygons = new List<Polygon>();

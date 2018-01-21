@@ -79,7 +79,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Plugin\OrigamiCreaterInspector.cs" />
-    <Compile Include="Assets\Plugin\OrigamiOperationCalculatorInspector.cs" />
     <Compile Include="Assets\Scripts\ClothCalculater.cs" />
     <Compile Include="Assets\Scripts\DebugOrigamiPaper.cs" />
     <Compile Include="Assets\Scripts\JUtility.cs" />

@@ -7,13 +7,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Obsolete("Use binary-tree instead", true)]
 public class OrigamiCreater : MonoBehaviour {
 	public List<OrigamiOperator> m_operators = new List<OrigamiOperator>();
 
 	public GameObject m_pointSample = null;
 	public OrigamiPaper m_paper = null;
-
-	private int m_curEdgeCount = 0;
 
 	// Use this for initialization
 	void Awake () {
@@ -58,24 +57,7 @@ public class OrigamiCreater : MonoBehaviour {
 	void InitNullPolygon()
 	{
 		List<Polygon> res = new List<Polygon>();
-
-		Polygon p = new Polygon();
-		p.m_points = new List<PolygonPoint>();
-		p.m_points.Add(new PolygonPoint(1, 1));
-		p.m_points.Add(new PolygonPoint(1, -1));
-		p.m_points.Add(new PolygonPoint(-1, -1));
-		p.m_points.Add(new PolygonPoint(-1, 1));
-
-		List<PolygonEdge> edges = new List<PolygonEdge>();
-		edges.Add(new PolygonEdge(0, 1, true));
-		edges.Add(new PolygonEdge(1, 2, true));
-		edges.Add(new PolygonEdge(2, 3, true));
-		edges.Add(new PolygonEdge(3, 0, true));
-		p.SetEdgeByIndexPair(edges);
-		m_curEdgeCount = p.Edges.Count;
-
-		p.InitAll();
-		res.Add(p);
+		res.Add(JUtility.GetRectPolygon(1, 1));
 
 		m_paper.InitOriginalPolygons(res);
 	}
@@ -94,11 +76,10 @@ public class OrigamiCreater : MonoBehaviour {
 
 	private bool FoldPaperByLine(OrigamiPaper paper, OrigamiOperator op)
 	{
-		int cur_edge_id = m_curEdgeCount;
 		PolygonLayer main_pl = null;
 		foreach(PolygonLayer pl in paper.m_polygonLayers)
 		{
-			if(pl.AddNewEdgeInWorld(cur_edge_id, true, op.head_pos, op.toe_pos))
+			if(pl.AddNewEdgeInWorld(true, op.head_pos, op.toe_pos))
 			{
 				main_pl = pl;
 			}

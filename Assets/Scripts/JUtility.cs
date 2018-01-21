@@ -4,7 +4,12 @@ using System.Collections.Generic;
 class JUtility
 {
 	public const float Epsilon = 0.00001f;
+	public const int PaperRenderQueue = 2000; // 纸张的基础的折叠顺序
 	public static Polygon GetRectPolygon(float width, float height)
+	{
+		return GetRectPolygon(0, 0, width, height);
+	}
+	public static Polygon GetRectPolygon(float posx, float posy, float width, float height)
 	{
 		Polygon p = new Polygon();
 		p.m_points = new List<PolygonPoint>();
@@ -20,6 +25,7 @@ class JUtility
 		edges.Add(new PolygonEdge(3, 0, true));
 		p.SetEdgeByIndexPair(edges);
 		p.InitAll();
+		p.SetOriginalBounds(p.CalculateBoundRect());
 
 		return p;
 	}
