@@ -465,7 +465,7 @@ public class Polygon
 	/// <summary>
 	/// 
 	/// </summary>
-	/// <returns> 1(全在左侧); -1(全在右侧); 0(其他) </returns>
+	/// <returns> 1(全在不需要被翻折的一侧); -1(全在需要翻折的一侧); 0(其他) </returns>
 	public int CheckAllOneSide(Vector2 local_head_pos, Vector2 local_toe_pos, Vector2 local_fold_dir)
 	{
 		int cur_side = 0;
@@ -473,11 +473,11 @@ public class Polygon
 		{
 			Vector2 point_dir = local_head_pos - p.position;
 			float cur_param = Vector2.Dot(point_dir, local_fold_dir);
-			if (cur_param > -JUtility.Epsilon && cur_param < JUtility.Epsilon)
+			if (cur_param > -JUtility.Epsilon && cur_param < JUtility.Epsilon) // 当前点在直线上
 			{
 				continue;
 			}
-			else
+			else // 当前点不在直线上，那么一定指示了一个方向
 			{
 				int sign = System.Math.Sign(cur_param);
 				if(cur_side == 0)
@@ -501,10 +501,20 @@ public class Polygon
 		return CutPolygon(0, head_pos, toe_pos, out left_p, out right_p, out cut_edge_id);
 	}
 
+	/// <summary>
+	/// 分割多边形
+	/// </summary>
+	/// <param name="edge_depth"></param>
+	/// <param name="head_pos"></param>
+	/// <param name="toe_pos"></param>
+	/// <param name="right_p"> 不需要翻转的一边、沿着折叠方向的那边 </param>
+	/// <param name="left_p"> 需要翻转的一边、靠近折叠方向起始位置的那边 </param>
+	/// <param name="cut_edge_id"></param>
+	/// <returns></returns>
 	public bool CutPolygon(int edge_depth, Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
 	{
-		left_p = new Polygon();
 		right_p = new Polygon();
+		left_p = new Polygon();
 		cut_edge_id = -1;
 
 		Vector2 head_toe = toe_pos - head_pos;
@@ -609,15 +619,15 @@ public class Polygon
 			return false;
 		}
 
-		left_p.m_points = left_point;
-		left_p.SetEdgeByPointPair(left_edge);
-		left_p.InitAll();
-		left_p.SetOriginalBounds(m_originBounds);
-
-		right_p.m_points = right_point;
-		right_p.SetEdgeByPointPair(right_edge);
+		right_p.m_points = left_point;
+		right_p.SetEdgeByPointPair(left_edge);
 		right_p.InitAll();
 		right_p.SetOriginalBounds(m_originBounds);
+
+		left_p.m_points = right_point;
+		left_p.SetEdgeByPointPair(right_edge);
+		left_p.InitAll();
+		left_p.SetOriginalBounds(m_originBounds);
 
 		return true;
 	}
@@ -932,12 +942,12 @@ public class PolygonLayer : MonoBehaviour {
 		List<Polygon> new_polygons = new List<Polygon>();
 		foreach(Polygon p in m_polygons)
 		{
-			Polygon left_p, right_p;
+			Polygon right_p, left_p;
 			int cut_edge_id;
 			if(p.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
 			{
-				new_polygons.Add(left_p);
 				new_polygons.Add(right_p);
+				new_polygons.Add(left_p);
 			}
 			else
 			{
@@ -958,12 +968,12 @@ public class PolygonLayer : MonoBehaviour {
 		Vector2 local_toe_pos = transform.InverseTransformPoint(world_toe_pos);
 		foreach (Polygon pl in m_polygons)
 		{
-			Polygon left_p, right_p;
+			Polygon right_p, left_p;
 			int cut_edge_id;
 			if(pl.CutPolygon(local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
 			{
-				new_polygons.Add(left_p);
 				new_polygons.Add(right_p);
+				new_polygons.Add(left_p);
 				bSucceeded = true;
 			}
 			else

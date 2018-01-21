@@ -17,7 +17,7 @@ public class PolygonJitter : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		Vector3 pos = transform.position;
-		pos.z = m_polygon_depth * (0.2f + 0.1f * Mathf.Cos(Time.time));
+		pos.z = m_polygon_depth * (-0.2f);// + 0.1f * Mathf.Cos(Time.time));
 		transform.position = pos;
 
 		if (true) return;
@@ -65,6 +65,7 @@ public class PolygonJitter : MonoBehaviour {
 	public void ShowPolygon(bool bShow)
 	{
 		m_bShow = bShow;
+		enabled = bShow;
 		GetComponent<MeshRenderer>().enabled = bShow;
 	}
 }

@@ -158,7 +158,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
 		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
 		int side = node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
-		if(side < 0)
+		if(side > 0) // 不需要翻折的一侧
 		{
 			OrigamiOperationNode left;
 			if (node.HasLeftChild())
@@ -186,7 +186,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				node.SetRightChildNull();
 			}
 		}
-		else if (side > 0)
+		else if (side < 0) // 需要翻折的一侧
 		{
 			OrigamiOperationNode right;
 			if (node.HasRightChild())
