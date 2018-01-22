@@ -6,6 +6,7 @@ public struct MeshData
 {
 	public Vector3[] m_vertices;
 	public Vector2[] m_uvs;
+	public Vector2[] m_uv2s;
 	public int[] m_triangles;
 	public Vector3[] m_normals; // 缓存法线
 
@@ -54,9 +55,16 @@ public class MeshPaper : MonoBehaviour {
 		m_meshData.m_uvs[3] = new Vector2(1, 1);
 		//
 		m_meshData.m_triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+		//
+		m_meshData.m_uv2s = new Vector2[4];
+		m_meshData.m_uv2s[0] = new Vector2(0, 0);
+		m_meshData.m_uv2s[1] = new Vector2(0, 0);
+		m_meshData.m_uv2s[2] = new Vector2(0, 0);
+		m_meshData.m_uv2s[3] = new Vector2(0, 0);
 
 		mesh.vertices = m_meshData.m_vertices;
 		mesh.uv = m_meshData.m_uvs;
+		mesh.uv2 = m_meshData.m_uv2s;
 		mesh.triangles = m_meshData.m_triangles;
 		mesh.RecalculateNormals();
 		m_meshData.m_normals = mesh.normals;

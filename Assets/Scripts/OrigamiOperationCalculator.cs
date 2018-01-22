@@ -147,7 +147,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		res.fold_angle = 0;
 		return res;
 	}
-
+	
 	/// <summary>
 	/// 为node计算并添加操作。
 	/// 通常情况下不应该在遍历时直接修改树，但是这里的操作内容不会影响遍历结果，所以直接这么搞了嗯嗯嗯
@@ -158,7 +158,6 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
 		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.normalised_touch_dir);
 		int side = node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
-		Debug.Log("SetOper:" + node.Data.trans.gameObject.name + "," + side);
 		if(side > 0) // 不需要翻折的一侧
 		{
 			OrigamiOperationNode left;
@@ -200,7 +199,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				right = GenerateObjAndNode("child_all_right", node.Data.trans, node.Data.polygon);
 			}
 			right.edge_id = 0;
-			right.fold_order = fold_order * 2 - 1 - node.Data.fold_order; // 左侧节点同父亲的折叠顺序
+			right.fold_order = (1 << fold_order) - 1 - node.Data.fold_order; // 左侧节点同父亲的折叠顺序
 			right.trans.GetComponent<PolygonJitter>().SetPolygonDepth(right.fold_order);
 
 			node.SetRightChild(right);
@@ -249,7 +248,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				node.SetLeftChild(left);
 
 				right.edge_id = cut_edge_id;
-				right.fold_order = fold_order * 2 - 1 - node.Data.fold_order; // 右侧节点为父亲的折叠顺序反之
+				right.fold_order = (1 << fold_order) - 1 - node.Data.fold_order; // 右侧节点为父亲的折叠顺序反之
 				right.trans.GetComponent<PolygonJitter>().SetPolygonDepth(right.fold_order);
 				node.SetRightChild(right);
 				

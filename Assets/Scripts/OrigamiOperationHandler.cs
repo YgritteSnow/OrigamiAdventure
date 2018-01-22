@@ -71,8 +71,7 @@ public class OrigamiOperationHandler : MonoBehaviour {
 			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up);
 		}
 	}
-
-	public Vector2 fff;
+	
 	void OnPressing()
 	{
 		m_press_curPos = GetMousePos();
@@ -92,8 +91,6 @@ public class OrigamiOperationHandler : MonoBehaviour {
 		Debug.DrawRay(m_press_startPos, fold_dir * 2, Color.green);
 		Debug.DrawLine(m_press_startPos, m_press_curPos, Color.green);
 #endif
-
-		fff = fold_dir;
 
 		if (!m_isFolding)
 		{

@@ -1,7 +1,8 @@
-﻿Shader "* jj/cull_off" {
+﻿Shader "* JJ/cull_off" {
 	Properties {
 		_Color ("Color", Color) = (1,1,1,1)
 		_MainTex ("Albedo (RGB)", 2D) = "white" {}
+		_BumpMap("Texture", 2D) = "white" {}
 		_Glossiness ("Smoothness", Range(0,1)) = 0.5
 		_Metallic ("Metallic", Range(0,1)) = 0.0
 	}
@@ -18,9 +19,11 @@
 		#pragma target 3.0
 
 		sampler2D _MainTex;
+		sampler2D _BumpMap;
 
 		struct Input {
 			float2 uv_MainTex;
+			float2 uv_BumpMap;
 		};
 
 		half _Glossiness;
@@ -37,8 +40,13 @@
 		void surf (Input IN, inout SurfaceOutputStandard o) {
 			// Albedo comes from a texture tinted by color
 			fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
-			o.Albedo = c.rgb;
+			//o.Albedo = c.rgb;
+			o.Albedo = float3(IN.uv_BumpMap.x, IN.uv_BumpMap.y, 0);
+			//o.Normal = float3(-1, tex2D(_EdgeTex, IN.uv_shadow).x, 0);
+			//o.Normal = float3(IN.uv_BumpMap.x, 0, 1 - IN.uv_BumpMap.x);
+			//o.Normal = UnpackNormal(tex2D(_BumpMap, IN.uv_MainTex));
 			// Metallic and smoothness come from slider variables
+			//o.Normal = float3(0,0,0.7);
 			o.Metallic = _Metallic;
 			o.Smoothness = _Glossiness;
 			o.Alpha = c.a;

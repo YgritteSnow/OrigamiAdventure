@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Obsolete("Use PolygonJitter instead.", true)]
 public class DebugOrigamiPaper : MonoBehaviour {
 
 	// Use this for initialization

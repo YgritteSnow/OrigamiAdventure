@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Obsolete("Use PolygonJitter instead.", true)]
 public class OrigamiPaper : MonoBehaviour {
 	public GameObject m_samplePolygonLayer; // 新增层时赋值此层作为模板
 	public List<PolygonLayer> m_polygonLayers = new List<PolygonLayer>();
@@ -59,7 +60,7 @@ public class OrigamiPaper : MonoBehaviour {
 		m_pressingPolygon = null;
 	}
 	#endregion
-
+	
 	public void InitOriginalPolygons(List<Polygon> polygons)
 	{
 		CreateLayerByList(polygons, 0);
@@ -92,7 +93,7 @@ public class OrigamiPaper : MonoBehaviour {
 			}
 		}
 	}
-
+	
 	PolygonLayer CreateLayerByList(List<Polygon> polygons, int layer_depth)
 	{
 		GameObject new_layer = GameObject.Instantiate(m_samplePolygonLayer);
@@ -110,7 +111,7 @@ public class OrigamiPaper : MonoBehaviour {
 		OnResetMaxMinDepth();
 		return pl;
 	}
-
+	
 	void OnResetMaxMinDepth()
 	{
 		foreach (PolygonLayer pl in m_polygonLayers)
@@ -168,7 +169,7 @@ public class OrigamiPaper : MonoBehaviour {
 
 		return true;
 	}
-
+	
 	void FormatNewLayersWorld(List<PolygonLayer> fold_layers, List<FoldInfo> fold_infos, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_touch_dir, bool from_upside)
 	{
 		List<int> new_layer_depth = CalNewLayerDepth(fold_layers, from_upside);

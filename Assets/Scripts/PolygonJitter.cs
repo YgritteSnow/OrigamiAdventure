@@ -17,7 +17,7 @@ public class PolygonJitter : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		Vector3 pos = transform.position;
-		pos.z = m_polygon_depth * (-0.2f);// + 0.1f * Mathf.Cos(Time.time));
+		pos.z = m_polygon_depth * (-0.02f);// + 0.1f * Mathf.Cos(Time.time));
 		transform.position = pos;
 
 		if (true) return;
@@ -27,6 +27,7 @@ public class PolygonJitter : MonoBehaviour {
 
 			m_mesh.vertices = m_meshData.m_vertices;
 			m_mesh.uv = m_meshData.m_uvs;
+			m_mesh.uv2 = m_meshData.m_uv2s;
 			m_mesh.triangles = m_meshData.m_triangles;
 
 			m_mesh.RecalculateNormals();
@@ -49,6 +50,7 @@ public class PolygonJitter : MonoBehaviour {
 		m_meshData = p.m_meshData;
 		m_mesh.vertices = m_meshData.m_vertices;
 		m_mesh.uv = m_meshData.m_uvs;
+		m_mesh.uv2 = m_meshData.m_uv2s;
 		m_mesh.triangles = m_meshData.m_triangles;
 		m_mesh.RecalculateNormals();
 		m_meshData.m_normals = m_mesh.normals;

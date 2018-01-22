@@ -93,6 +93,7 @@ public struct PointPair
 public class Polygon
 {
 	public List<PolygonPoint> m_points; // 多边形的点
+	public Vector2 center_position; // 多边形的中心
 	private List<PolygonEdge> m_edges; // 多边形的边
 	public List<PolygonEdge> Edges { get { return m_edges; } }
 	public Vector4 m_originBounds; // 最初的边界，用以计算uv
@@ -154,12 +155,16 @@ public class Polygon
 		CalPointLine(out point_line);
 		SortPoints(ref point_line);
 
+		// 计算中心点，并将其加入点列表，作为所有三角形都经过的一个公共点
+		center_position = CalCenterPoint();
+
 		// 顶点直接拷贝多边形的点
-		m_meshData.m_vertices = new Vector3[m_points.Count];
-		for (int idx = 0; idx != m_meshData.m_vertices.Length; ++idx)
+		m_meshData.m_vertices = new Vector3[m_points.Count + 1];
+		for (int idx = 0; idx != m_points.Count; ++idx)
 		{
 			m_meshData.m_vertices[idx] = m_points[idx].position;
 		}
+		m_meshData.m_vertices[m_points.Count] = center_position;
 
 		// 从一个点出发，构建所有的三角形
 		SetTriangleList(ref point_line, ref m_meshData.m_triangles);
@@ -198,6 +203,16 @@ public class Polygon
 			int next_idx = FindOtherEnd(point_line[point_line.Count - 1], point_line[point_line.Count - 2]);
 			point_line.Add(next_idx);
 		}
+	}
+	Vector2 CalCenterPoint()
+	{
+		Vector2 res = Vector2.zero;
+		foreach(PolygonPoint v in m_points)
+		{
+			res += v.position;
+		}
+		res /= m_points.Count;
+		return res;
 	}
 	/// <summary>
 	/// 整理点，使之沿着周长方向依次排列
@@ -321,19 +336,19 @@ public class Polygon
 	/// <param name="triangles"></param>
 	void SetTriangleList(ref List<int> point_line, ref int[] triangles)
 	{
-		int triangle_count = (point_line.Count - 2) * 3;
+		int triangle_count = point_line.Count * 3;
 		if (triangle_count < 0)
 		{
 			triangles = new int[0];
 			return;
 		}
 		triangles = new int[triangle_count];
-		for (int i = 2; i < point_line.Count; ++i)
+		for (int i = 0; i < point_line.Count; ++i)
 		{
-			int triangle_idx = (i - 2) * 3;
-			triangles[triangle_idx] = point_line[0];
-			triangles[triangle_idx + 1] = point_line[i - 1];
-			triangles[triangle_idx + 2] = point_line[i];
+			int triangle_idx = i * 3;
+			triangles[triangle_idx] = point_line[i];
+			triangles[triangle_idx + 1] = point_line[(i + 1)%point_line.Count];
+			triangles[triangle_idx + 2] = point_line.Count;
 		}
 	}
 	#endregion
@@ -367,34 +382,48 @@ public class Polygon
 	public void SetOriginalBounds(Vector4 bounds)
 	{
 		m_originBounds = bounds;
-		CalUVByProjectToBound(m_originBounds, ref m_meshData.m_uvs);
+		CalUVByProjectToBound(m_originBounds);
+		CalUV2();
 	}
 	/// <summary>
 	/// 使用包围盒作为纹理映射的边界，自动计算所有uv坐标。
 	/// </summary>
-	void CalUVByProjectToBound(Vector4 bound, ref Vector2[] uvs)
+	void CalUVByProjectToBound(Vector4 bound)
 	{
 		if(bound == null)
 		{
 			return;
 		}
 
-		uvs = new Vector2[m_points.Count];
+		m_meshData.m_uvs = new Vector2[m_points.Count + 1];
 		if (m_points.Count == 0)
 		{
 			return;
 		}
 
 		float width_inv = 1 / (bound.y - bound.x);
-		float height_ivn = 1 / (bound.z - bound.w);
+		float height_inv = 1 / (bound.z - bound.w);
 
 		for (int idx = 0; idx < m_points.Count; ++idx)
 		{
-			uvs[idx] = new Vector2(
+			m_meshData.m_uvs[idx] = new Vector2(
 				(m_points[idx].position.x - bound.x) * width_inv,
-				(m_points[idx].position.y - bound.w) * height_ivn
+				(m_points[idx].position.y - bound.w) * height_inv
 			);
 		}
+		m_meshData.m_uvs[m_points.Count] = new Vector2(
+			(center_position.x - bound.x) * width_inv,
+			(center_position.y - bound.w) * height_inv
+		);
+	}
+	void CalUV2()
+	{
+		m_meshData.m_uv2s = new Vector2[m_points.Count + 1];
+		for(int idx = 0; idx < m_points.Count; ++idx)
+		{
+			m_meshData.m_uv2s[idx] = new Vector2(1, 0);
+		}
+		m_meshData.m_uv2s[m_points.Count] = new Vector2(0, 0);
 	}
 	#endregion
 
@@ -689,6 +718,7 @@ public class PolygonLayer : MonoBehaviour {
 	}
 
 	#region set polygon and mesh stuff up
+	[System.Obsolete("Use PolygonJitter instead.", true)]
 	public void SetLayerDepth(int layer_depth)
 	{
 		m_layerDepth = layer_depth;
@@ -697,6 +727,7 @@ public class PolygonLayer : MonoBehaviour {
 		pos.z += layer_depth * 0.2f;
 		gameObject.transform.position = pos;
 	}
+	[System.Obsolete("Use PolygonJitter instead.", true)]
 	public void ResetColorByLayerDepth(int min_depth, int max_depth)
 	{
 		float depth_lerp = max_depth == min_depth ? 1 : (m_layerDepth - min_depth) / (float)(max_depth - min_depth);
@@ -750,6 +781,7 @@ public class PolygonLayer : MonoBehaviour {
 		}
 		m_meshData.m_vertices = new Vector3[vertices_count];
 		m_meshData.m_uvs = new Vector2[uvs_count];
+		m_meshData.m_uv2s = new Vector2[uvs_count];
 		m_meshData.m_triangles = new int[triangles_count];
 		int vertices_idx = 0;
 		int uvs_idx = 0;
@@ -760,6 +792,7 @@ public class PolygonLayer : MonoBehaviour {
 			p.m_meshData.m_vertices.CopyTo(m_meshData.m_vertices, vertices_idx);
 			vertices_idx += p.m_meshData.m_vertices.Length;
 			p.m_meshData.m_uvs.CopyTo(m_meshData.m_uvs, uvs_idx);
+			p.m_meshData.m_uv2s.CopyTo(m_meshData.m_uv2s, uvs_idx);
 			uvs_idx += p.m_meshData.m_uvs.Length;
 
 			p.m_meshData.m_triangles.CopyTo(m_meshData.m_triangles, triangles_idx);
@@ -781,6 +814,7 @@ public class PolygonLayer : MonoBehaviour {
 		}
 		m_mesh.vertices = m_meshData.m_vertices;
 		m_mesh.uv = m_meshData.m_uvs;
+		m_mesh.uv2 = m_meshData.m_uv2s;
 		m_mesh.triangles = m_meshData.m_triangles;
 		m_mesh.RecalculateNormals();
 		m_meshData.m_normals = m_mesh.normals;
