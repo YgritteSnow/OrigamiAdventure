@@ -471,7 +471,7 @@ public class Polygon
 		int cur_side = 0;
 		foreach (PolygonPoint p in m_points)
 		{
-			Vector2 point_dir = local_head_pos - p.position;
+			Vector2 point_dir = p.position - local_head_pos;
 			float cur_param = Vector2.Dot(point_dir, local_fold_dir);
 			if (cur_param > -JUtility.Epsilon && cur_param < JUtility.Epsilon) // 当前点在直线上
 			{
@@ -498,7 +498,7 @@ public class Polygon
 	[System.Obsolete("Be sure to set the right depth for new edge in order to support animation in PolygonJitter", true)]
 	public bool CutPolygon(Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
 	{
-		return CutPolygon(0, head_pos, toe_pos, out left_p, out right_p, out cut_edge_id);
+		return CutPolygon(0, head_pos, toe_pos, Vector2.up, out left_p, out right_p, out cut_edge_id);
 	}
 
 	/// <summary>
@@ -511,8 +511,15 @@ public class Polygon
 	/// <param name="left_p"> 需要翻转的一边、靠近折叠方向起始位置的那边 </param>
 	/// <param name="cut_edge_id"></param>
 	/// <returns></returns>
-	public bool CutPolygon(int edge_depth, Vector2 head_pos, Vector2 toe_pos, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
+	public bool CutPolygon(int edge_depth, Vector2 head_pos, Vector2 toe_pos, Vector2 fold_dir, out Polygon left_p, out Polygon right_p, out int cut_edge_id)
 	{
+		if(Vector2.Dot(head_pos-toe_pos, new Vector2(fold_dir.y, -fold_dir.x)) < 0)
+		{
+			Vector2 tmp = head_pos;
+			head_pos = toe_pos;
+			toe_pos = tmp;
+		}
+
 		right_p = new Polygon();
 		left_p = new Polygon();
 		cut_edge_id = -1;

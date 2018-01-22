@@ -5,6 +5,8 @@ class JUtility
 {
 	public const float Epsilon = 0.00001f;
 	public const int PaperRenderQueue = 2000; // 纸张的基础的折叠顺序
+
+	#region 获取一个无其他折痕的长方形
 	public static Polygon GetRectPolygon(float width, float height)
 	{
 		return GetRectPolygon(0, 0, width, height);
@@ -29,6 +31,7 @@ class JUtility
 
 		return p;
 	}
+	#endregion
 }
 
 #region 二叉树结构
@@ -92,6 +95,7 @@ public class JBinaryTree<TData>
 	}
 	#endregion
 
+	#region 一些接口
 	public bool HasLeftChild()
 	{
 		return child_node[0] != null;
@@ -134,5 +138,6 @@ public class JBinaryTree<TData>
 		}
 		child_node[1].Data = data;
 	}
+	#endregion
 }
 #endregion

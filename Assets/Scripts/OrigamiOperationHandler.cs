@@ -59,19 +59,20 @@ public class OrigamiOperationHandler : MonoBehaviour {
 		m_press_curPos = Vector2.zero;
 	}
 
-	void OnPressing2()
+	void OnPressingDebug()
 	{
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(new Vector2(2, -1), new Vector2(2, 1), Vector2.up);
+			m_calculator.AddOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up);
 			m_isFolding = true;
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(new Vector2(2, -1), new Vector2(2, 1), Vector2.up);
+			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up);
 		}
 	}
 
+	public Vector2 fff;
 	void OnPressing()
 	{
 		m_press_curPos = GetMousePos();
@@ -80,22 +81,28 @@ public class OrigamiOperationHandler : MonoBehaviour {
 			return;
 		}
 
+		//if (true) { OnPressingDebug(); return; } // debug用
+
 		Vector2 mid_pos = (m_press_startPos + m_press_curPos) / 2;
 		Vector2 fold_dir = m_press_curPos - m_press_startPos;
 		fold_dir.Normalize();
 		Vector2 edge_dir = new Vector2(fold_dir.y, -fold_dir.x);
 
+#if UNITY_EDITOR
+		Debug.DrawRay(m_press_startPos, fold_dir * 2, Color.green);
 		Debug.DrawLine(m_press_startPos, m_press_curPos, Color.green);
-		Debug.DrawRay(mid_pos, edge_dir * 2, Color.red);
+#endif
+
+		fff = fold_dir;
 
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(mid_pos, mid_pos + edge_dir, fold_dir);
+			m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir);
 			m_isFolding = true;
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(mid_pos, mid_pos + edge_dir, fold_dir);
+			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir);
 		}
 	}
 }

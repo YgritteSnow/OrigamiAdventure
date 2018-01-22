@@ -156,15 +156,18 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	{
 		Vector2 local_head_pos = node.Data.trans.InverseTransformPoint(op.head_pos);
 		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
-		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
+		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.normalised_touch_dir);
 		int side = node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
+		Debug.Log("SetOper:" + node.Data.trans.gameObject.name + "," + side);
 		if(side > 0) // 不需要翻折的一侧
 		{
 			OrigamiOperationNode left;
 			if (node.HasLeftChild())
 			{
 				left = node.GetLeftChild();
+				left.polygon = node.Data.polygon;
 				left.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+				left.trans.GetComponent<PolygonJitter>().SetPolygon(left.polygon);
 			}
 			else
 			{
@@ -175,10 +178,6 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			left.trans.GetComponent<PolygonJitter>().SetPolygonDepth(left.fold_order);
 
 			node.SetLeftChild(left);
-			if (!node.IsLeft)
-			{
-				left.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
-			}
 
 			if (node.HasRightChild())
 			{
@@ -192,7 +191,9 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			if (node.HasRightChild())
 			{
 				right = node.GetRightChild();
+				right.polygon = node.Data.polygon;
 				right.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
+				right.trans.GetComponent<PolygonJitter>().SetPolygon(right.polygon);
 			}
 			else
 			{
@@ -203,10 +204,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			right.trans.GetComponent<PolygonJitter>().SetPolygonDepth(right.fold_order);
 
 			node.SetRightChild(right);
-			if (node.IsLeft)
-			{
-				right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
-			}
+			right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
 
 			if (node.HasLeftChild())
 			{
@@ -218,7 +216,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		{
 			Polygon left_p, right_p;
 			int cut_edge_id;
-			if (node.Data.polygon.CutPolygon(fold_order, local_head_pos, local_toe_pos, out left_p, out right_p, out cut_edge_id))
+			if (node.Data.polygon.CutPolygon(fold_order, local_head_pos, local_toe_pos, local_fold_dir, out left_p, out right_p, out cut_edge_id))
 			{
 				OrigamiOperationNode right;
 				if (node.HasRightChild())
@@ -254,8 +252,8 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				right.fold_order = fold_order * 2 - 1 - node.Data.fold_order; // 右侧节点为父亲的折叠顺序反之
 				right.trans.GetComponent<PolygonJitter>().SetPolygonDepth(right.fold_order);
 				node.SetRightChild(right);
-
-				(node.IsLeft ? right : left).trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
+				
+				right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
 			}
 			else
 			{
