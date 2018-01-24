@@ -7,13 +7,13 @@ class JUtility
 	public const int PaperRenderQueue = 2000; // 纸张的基础的折叠顺序
 
 	#region 获取一个无其他折痕的长方形
-	public static Polygon GetRectPolygon(float width, float height)
+	public static PolygonData GetRectPolygon(float width, float height)
 	{
 		return GetRectPolygon(0, 0, width, height);
 	}
-	public static Polygon GetRectPolygon(float posx, float posy, float width, float height)
+	public static PolygonData GetRectPolygon(float posx, float posy, float width, float height)
 	{
-		Polygon p = new Polygon();
+		PolygonData p = new PolygonData();
 		p.m_points = new List<PolygonPoint>();
 		p.m_points.Add(new PolygonPoint(width, height));
 		p.m_points.Add(new PolygonPoint(width, -height));

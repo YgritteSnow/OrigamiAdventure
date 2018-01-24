@@ -61,7 +61,7 @@ public class OrigamiPaper : MonoBehaviour {
 	}
 	#endregion
 	
-	public void InitOriginalPolygons(List<Polygon> polygons)
+	public void InitOriginalPolygons(List<PolygonData> polygons)
 	{
 		CreateLayerByList(polygons, 0);
 	}
@@ -94,7 +94,7 @@ public class OrigamiPaper : MonoBehaviour {
 		}
 	}
 	
-	PolygonLayer CreateLayerByList(List<Polygon> polygons, int layer_depth)
+	PolygonLayer CreateLayerByList(List<PolygonData> polygons, int layer_depth)
 	{
 		GameObject new_layer = GameObject.Instantiate(m_samplePolygonLayer);
 		new_layer.name = Random.Range(1, 100).ToString();

@@ -24,6 +24,9 @@ public class OrigamiOperationHandler : MonoBehaviour {
 	{
 		if (Input.GetMouseButton(0))
 		{
+			Vector2 a = new Vector2(1, 2);
+			Vector2 b = new Vector2(-3, 5);
+			b.Scale(a);
 			if (!m_isPressing)
 			{
 				m_isPressing = true;

@@ -56,7 +56,7 @@ public class OrigamiCreater : MonoBehaviour {
 
 	void InitNullPolygon()
 	{
-		List<Polygon> res = new List<Polygon>();
+		List<PolygonData> res = new List<PolygonData>();
 		res.Add(JUtility.GetRectPolygon(1, 1));
 
 		m_paper.InitOriginalPolygons(res);
