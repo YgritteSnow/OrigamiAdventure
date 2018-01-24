@@ -12,12 +12,12 @@ public class OrigamiOperator
 		head_pos = Vector3.zero;
 		toe_pos = Vector3.zero;
 		touch_dir = Vector3.zero;
-		is_valid = true;
-		need_fold = true;
+		is_backward = false;
 	}
 	public Vector2 head_pos;
 	public Vector2 toe_pos;
 	public Vector2 touch_dir;
+	public bool is_backward;
 
 	public Vector2 normalised_touch_dir
 	{
@@ -33,8 +33,6 @@ public class OrigamiOperator
 			return res;
 		}
 	}
-	public bool is_valid;
-	public bool need_fold;
 }
 
 /// <summary>
@@ -89,14 +87,13 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	}
 
 	#region 对外的添加、修改、删除函数
-	public bool AddOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir)
+	public bool AddOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_backward)
 	{
 		OrigamiOperator op = new OrigamiOperator();
 		op.head_pos = world_head_pos;
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
-		op.is_valid = true;
-		op.need_fold = true;
+		op.is_backward = is_backward;
 		m_operators.Add(op);
 
 		TraverseSetLastOperator(op);
@@ -104,7 +101,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		return true;
 	}
 
-	public bool ChangeLastOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir)
+	public bool ChangeLastOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_backward)
 	{
 		if(m_operators.Count == 0)
 		{
@@ -115,8 +112,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.head_pos = world_head_pos;
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
-		op.is_valid = true;
-		op.need_fold = true;
+		op.is_backward = is_backward;
 
 		TraverseSetLastOperator(op);
 
@@ -147,7 +143,29 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		res.fold_angle = 0;
 		return res;
 	}
-	
+
+	int GetLeftDepth(int fold_order, int parent_order, bool is_backward)
+	{
+		if(!is_backward)
+		{
+			return parent_order;
+		}
+		else
+		{
+			return (1 << (fold_order-1)) + parent_order;
+		}
+	}
+	int GetRightDepth(int fold_order, int parent_order, bool is_backward)
+	{
+		if (!is_backward)
+		{
+			return (1 << fold_order) - 1 - parent_order;
+		}
+		else
+		{
+			return (1 << (fold_order - 1)) - 1 - parent_order;
+		}
+	}
 	/// <summary>
 	/// 为node计算并添加操作。
 	/// 通常情况下不应该在遍历时直接修改树，但是这里的操作内容不会影响遍历结果，所以直接这么搞了嗯嗯嗯
@@ -173,7 +191,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				left = GenerateObjAndNode("child_all_left", node.Data.trans, node.Data.polygon);
 			}
 			left.edge_id = 0;
-			left.fold_order = node.Data.fold_order; // 左侧节点同父亲的折叠顺序
+			left.fold_order = GetLeftDepth(fold_order, node.Data.fold_order, op.is_backward);
 			left.trans.GetComponent<Polygon>().SetPolygonDepth(left.fold_order);
 
 			node.SetLeftChild(left);
@@ -199,7 +217,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				right = GenerateObjAndNode("child_all_right", node.Data.trans, node.Data.polygon);
 			}
 			right.edge_id = 0;
-			right.fold_order = (1 << fold_order) - 1 - node.Data.fold_order; // 左侧节点同父亲的折叠顺序
+			right.fold_order = GetRightDepth(fold_order, node.Data.fold_order, op.is_backward);
 			right.trans.GetComponent<Polygon>().SetPolygonDepth(right.fold_order);
 
 			node.SetRightChild(right);
@@ -243,12 +261,12 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				}
 
 				left.edge_id = cut_edge_id;
-				left.fold_order = node.Data.fold_order; // 左侧节点同父亲的折叠顺序
+				left.fold_order = GetLeftDepth(fold_order, node.Data.fold_order, op.is_backward);
 				left.trans.GetComponent<Polygon>().SetPolygonDepth(left.fold_order);
 				node.SetLeftChild(left);
 
 				right.edge_id = cut_edge_id;
-				right.fold_order = (1 << fold_order) - 1 - node.Data.fold_order; // 右侧节点为父亲的折叠顺序反之
+				right.fold_order = GetRightDepth(fold_order, node.Data.fold_order, op.is_backward);
 				right.trans.GetComponent<Polygon>().SetPolygonDepth(right.fold_order);
 				node.SetRightChild(right);
 				

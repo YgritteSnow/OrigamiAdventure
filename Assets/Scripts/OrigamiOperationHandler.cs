@@ -11,9 +11,15 @@ public class OrigamiOperationHandler : MonoBehaviour {
 	public Vector2 m_press_curPos = Vector2.zero;
 	public bool m_isFolding = false;
 
+	public GameObject m_mainCamera = null; // 正面摄像机
+	public GameObject m_backCamera = null; // 背面摄像机
+	public bool m_isBackward = false; // 是否是背面模式
+
 	// Use this for initialization
-	void Awake () {
-		if(m_calculator == null)
+	void Awake() {
+		InitBackCamera();
+
+		if (m_calculator == null)
 		{
 			m_calculator = GetComponent<OrigamiOperationCalculator>();
 		}
@@ -21,6 +27,13 @@ public class OrigamiOperationHandler : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update()
+	{
+		OnUpdateForBackward();
+		OnUpdateForMouseDrag();
+	}
+
+	#region 鼠标拖拽控制
+	void OnUpdateForMouseDrag()
 	{
 		if (Input.GetMouseButton(0))
 		{
@@ -66,19 +79,19 @@ public class OrigamiOperationHandler : MonoBehaviour {
 	{
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up);
+			m_calculator.AddOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_isBackward);
 			m_isFolding = true;
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up);
+			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_isBackward);
 		}
 	}
-	
+
 	void OnPressing()
 	{
 		m_press_curPos = GetMousePos();
-		if((m_press_curPos - m_press_startPos).sqrMagnitude < 0.01)
+		if ((m_press_curPos - m_press_startPos).sqrMagnitude < 0.01)
 		{
 			return;
 		}
@@ -97,12 +110,55 @@ public class OrigamiOperationHandler : MonoBehaviour {
 
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir);
+			m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
 			m_isFolding = true;
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir);
+			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
 		}
 	}
+	#endregion
+
+	#region 翻转控制
+	void OnUpdateForBackward()
+	{
+		if (Input.GetKeyDown(KeyCode.R))
+		{
+			m_isBackward = true;
+			OnUpsideChange();
+		}
+		if (Input.GetKeyUp(KeyCode.R))
+		{
+			m_isBackward = false;
+			OnUpsideChange();
+		}
+	}
+
+	void InitBackCamera()
+	{
+		m_mainCamera = GameObject.Find("main_camera");
+		m_backCamera = GameObject.Find("back_camera");
+
+		Camera backCamera = m_backCamera.GetComponent<Camera>();
+		Matrix4x4 cam_mat = backCamera.worldToCameraMatrix;
+		cam_mat.m00 = -cam_mat.m00;
+		backCamera.worldToCameraMatrix = cam_mat;
+		m_backCamera.SetActive(false);
+	}
+
+	void OnUpsideChange()
+	{
+		if(m_isBackward)
+		{
+			m_backCamera.SetActive(m_isBackward);
+			m_mainCamera.SetActive(!m_isBackward);
+		}
+		else
+		{
+			m_mainCamera.SetActive(!m_isBackward);
+			m_backCamera.SetActive(m_isBackward);
+		}
+	}
+	#endregion
 }
