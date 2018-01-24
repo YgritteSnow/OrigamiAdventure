@@ -87,6 +87,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	}
 
 	#region 对外的添加、修改、删除函数
+	// 添加一个操作
 	public bool AddOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_backward)
 	{
 		OrigamiOperator op = new OrigamiOperator();
@@ -100,7 +101,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 		return true;
 	}
-
+	// 修改最后一个操作
 	public bool ChangeLastOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_backward)
 	{
 		if(m_operators.Count == 0)
@@ -113,6 +114,20 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
 		op.is_backward = is_backward;
+
+		TraverseSetLastOperator(op);
+
+		return true;
+	}
+	// 撤销某一个操作，并将新增加的操作作为最后一个操作
+	public bool RevertOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_backward)
+	{
+		OrigamiOperator op = new OrigamiOperator();
+		op.head_pos = world_head_pos;
+		op.toe_pos = world_toe_pos;
+		op.touch_dir = world_fold_dir;
+		op.is_backward = is_backward;
+		m_operators.Add(op);
 
 		TraverseSetLastOperator(op);
 
@@ -282,6 +297,4 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		return true;
 	}
 	#endregion
-
-
 }

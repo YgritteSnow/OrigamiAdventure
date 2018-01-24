@@ -3,20 +3,27 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(OrigamiOperationCalculator))]
-public class OrigamiOperationHandler : MonoBehaviour {
+public class OrigamiOperationHandler : MonoBehaviour
+{
 	private OrigamiOperationCalculator m_calculator = null;
 
-	public bool m_isPressing = false;
-	public Vector2 m_press_startPos = Vector2.zero;
-	public Vector2 m_press_curPos = Vector2.zero;
-	public bool m_isFolding = false;
+	// 鼠标拖拽
+	private bool m_isPressing = false;
+	private Vector2 m_press_startPos = Vector2.zero;
+	private Vector2 m_press_curPos = Vector2.zero;
+	private bool m_isFolding = false;
 
-	public GameObject m_mainCamera = null; // 正面摄像机
-	public GameObject m_backCamera = null; // 背面摄像机
-	public bool m_isBackward = false; // 是否是背面模式
+	// 反转视角
+	private GameObject m_mainCamera = null; // 正面摄像机
+	private GameObject m_backCamera = null; // 背面摄像机
+	private bool m_isBackward = false; // 是否是背面模式
+
+	// 撤销折叠
+	public bool m_isReverting = false; // 是否正在撤销
 
 	// Use this for initialization
-	void Awake() {
+	void Awake()
+	{
 		InitBackCamera();
 
 		if (m_calculator == null)
@@ -30,6 +37,7 @@ public class OrigamiOperationHandler : MonoBehaviour {
 	{
 		OnUpdateForBackward();
 		OnUpdateForMouseDrag();
+		OnUpdateForRevertFold();
 	}
 
 	#region 鼠标拖拽控制
@@ -96,8 +104,6 @@ public class OrigamiOperationHandler : MonoBehaviour {
 			return;
 		}
 
-		//if (true) { OnPressingDebug(); return; } // debug用
-
 		Vector2 mid_pos = (m_press_startPos + m_press_curPos) / 2;
 		Vector2 fold_dir = m_press_curPos - m_press_startPos;
 		fold_dir.Normalize();
@@ -110,8 +116,16 @@ public class OrigamiOperationHandler : MonoBehaviour {
 
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
-			m_isFolding = true;
+			if (!m_isReverting)
+			{
+				m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
+				m_isFolding = true;
+			}
+			else
+			{
+				m_calculator.RevertOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
+				m_isFolding = true;
+			}
 		}
 		else
 		{
@@ -149,7 +163,7 @@ public class OrigamiOperationHandler : MonoBehaviour {
 
 	void OnUpsideChange()
 	{
-		if(m_isBackward)
+		if (m_isBackward)
 		{
 			m_backCamera.SetActive(m_isBackward);
 			m_mainCamera.SetActive(!m_isBackward);
@@ -158,6 +172,28 @@ public class OrigamiOperationHandler : MonoBehaviour {
 		{
 			m_mainCamera.SetActive(!m_isBackward);
 			m_backCamera.SetActive(m_isBackward);
+		}
+	}
+	#endregion
+
+	#region 撤销折叠控制
+	void OnUpdateForRevertFold()
+	{
+		// 折叠操作期间不改变撤销状态
+		if(m_isFolding)
+		{
+			return;
+		}
+
+		if (Input.GetKeyDown(KeyCode.D))
+		{
+			m_isReverting = true;
+			OnUpsideChange();
+		}
+		if (Input.GetKeyUp(KeyCode.D))
+		{
+			m_isReverting = false;
+			OnUpsideChange();
 		}
 	}
 	#endregion
