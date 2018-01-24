@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ClothCalculater : MonoBehaviour {
+public class PolygonLinePool : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {

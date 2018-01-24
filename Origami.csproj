@@ -78,21 +78,22 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Plugin\OrigamiCreaterInspector.cs" />
-    <Compile Include="Assets\Scripts\ClothCalculater.cs" />
     <Compile Include="Assets\Scripts\DebugOrigamiPaper.cs" />
     <Compile Include="Assets\Scripts\JUtility.cs" />
-    <Compile Include="Assets\Scripts\MeshPaper.cs" />
-    <Compile Include="Assets\Scripts\OrigamiCreater.cs" />
+    <Compile Include="Assets\Scripts\LineManager.cs" />
     <Compile Include="Assets\Scripts\OrigamiOperationCalculator.cs" />
     <Compile Include="Assets\Scripts\OrigamiOperationHandler.cs" />
     <Compile Include="Assets\Scripts\OrigamiPaper.cs" />
+    <Compile Include="Assets\Scripts\Polygon.cs" />
     <Compile Include="Assets\Scripts\PolygonJitter.cs" />
     <Compile Include="Assets\Scripts\PolygonLayer.cs" />
+    <Compile Include="Assets\Scripts\PolygonOuterRenderer.cs" />
+    <Compile Include="Assets\Scripts\PolygonRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\cull_off.shader" />
     <None Include="Assets\Shaders\unlit_cull_off.shader" />
+    <None Include="Assets\Shaders\unlit_paper_outer_shadow.shader" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

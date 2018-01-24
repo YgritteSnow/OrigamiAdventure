@@ -21,10 +21,10 @@ class JUtility
 		p.m_points.Add(new PolygonPoint(-width, height));
 
 		List<PolygonEdge> edges = new List<PolygonEdge>();
-		edges.Add(new PolygonEdge(0, 1, true));
-		edges.Add(new PolygonEdge(1, 2, true));
-		edges.Add(new PolygonEdge(2, 3, true));
-		edges.Add(new PolygonEdge(3, 0, true));
+		edges.Add(new PolygonEdge(PolygonEdge.GetEdgeID(), 0, 1));
+		edges.Add(new PolygonEdge(PolygonEdge.GetEdgeID(), 1, 2));
+		edges.Add(new PolygonEdge(PolygonEdge.GetEdgeID(), 2, 3));
+		edges.Add(new PolygonEdge(PolygonEdge.GetEdgeID(), 3, 0));
 		p.SetEdgeByIndexPair(edges);
 		p.InitAll();
 		p.SetOriginalBounds(p.CalculateBoundRect());
@@ -46,13 +46,16 @@ public class JBinaryTree<TData>
 	// 是否是左结点：只在初始化的时候设置
 	private bool m_isLeft = false;
 	public bool IsLeft { get { return m_isLeft; } }
+	public bool IsRight { get { return !m_isLeft; } }
 
 	public JBinaryTree<TData>[] child_node;
+	public JBinaryTree<TData> parent_node;
 
 	private JBinaryTree(bool isLeft)
 	{
 		Data = default(TData);
 		m_isLeft = isLeft;
+		parent_node = null;
 		child_node = new JBinaryTree<TData>[2];
 	}
 
@@ -60,6 +63,7 @@ public class JBinaryTree<TData>
 	{
 		Data = d;
 		m_isLeft = isLeft;
+		parent_node = null;
 		child_node = new JBinaryTree<TData>[2];
 	}
 
@@ -95,6 +99,34 @@ public class JBinaryTree<TData>
 	}
 	#endregion
 
+	#region 整理某一层的所有点，并排序，然后按照排序后的次序遍历
+	public delegate int GetOrder(TData data);
+	public bool TraverseOneDepthByOrder(int depth, GetOrder order_func, CheckAndTraverseFunc check_func)
+	{
+		List<JBinaryTree<TData>> result = new List<JBinaryTree<TData>>();
+		TraverseOneDepthWithCheck(depth, delegate (JBinaryTree<TData> data)
+			{
+				result.Add(data);
+				return true;
+			});
+		
+		result.Sort( delegate (JBinaryTree<TData> lh, JBinaryTree<TData> rh)
+			{
+				return order_func(lh.Data) - order_func(rh.Data);
+			});
+
+		foreach(JBinaryTree<TData> data in result)
+		{
+			if(!check_func(data))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+	#endregion
+
 	#region 一些接口
 	public bool HasLeftChild()
 	{
@@ -127,6 +159,7 @@ public class JBinaryTree<TData>
 		if(child_node[0] == null)
 		{
 			child_node[0] = new JBinaryTree<TData>(true);
+			child_node[0].parent_node = this;
 		}
 		child_node[0].Data = data;
 	}
@@ -135,6 +168,7 @@ public class JBinaryTree<TData>
 		if (child_node[1] == null)
 		{
 			child_node[1] = new JBinaryTree<TData>(false);
+			child_node[1].parent_node = this;
 		}
 		child_node[1].Data = data;
 	}

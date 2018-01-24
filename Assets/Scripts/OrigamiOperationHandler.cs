@@ -16,7 +16,7 @@ public class OrigamiOperationHandler : MonoBehaviour
 	// 反转视角
 	private GameObject m_mainCamera = null; // 正面摄像机
 	private GameObject m_backCamera = null; // 背面摄像机
-	private bool m_isBackward = false; // 是否是背面模式
+	private bool m_is_forward = true; // 是否是背面模式
 
 	// 撤销折叠
 	public bool m_isReverting = false; // 是否正在撤销
@@ -81,25 +81,26 @@ public class OrigamiOperationHandler : MonoBehaviour
 	{
 		m_press_startPos = Vector2.zero;
 		m_press_curPos = Vector2.zero;
+		m_calculator.ClearRevertInfo();
 	}
 
 	void OnPressingDebug()
 	{
 		if (!m_isFolding)
 		{
-			m_calculator.AddOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_isBackward);
+			m_calculator.AddOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_is_forward);
 			m_isFolding = true;
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_isBackward);
+			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_is_forward);
 		}
 	}
 
 	void OnPressing()
 	{
 		m_press_curPos = GetMousePos();
-		if ((m_press_curPos - m_press_startPos).sqrMagnitude < 0.01)
+		if ((m_press_curPos - m_press_startPos).sqrMagnitude < 0.0001)
 		{
 			return;
 		}
@@ -118,18 +119,22 @@ public class OrigamiOperationHandler : MonoBehaviour
 		{
 			if (!m_isReverting)
 			{
-				m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
+				// 正常模式下：立即进入折叠期
+				m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
 				m_isFolding = true;
 			}
 			else
 			{
-				m_calculator.RevertOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
-				m_isFolding = true;
+				// 撤销模式下：成功时，才进入折叠期；在此之前，一直检测是否可以取消折叠
+				if (m_calculator.RevertOperation(m_press_curPos, m_is_forward))
+				{
+					m_isFolding = true;
+				}
 			}
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_isBackward);
+			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
 		}
 	}
 	#endregion
@@ -139,12 +144,12 @@ public class OrigamiOperationHandler : MonoBehaviour
 	{
 		if (Input.GetKeyDown(KeyCode.R))
 		{
-			m_isBackward = true;
+			m_is_forward = false;
 			OnUpsideChange();
 		}
 		if (Input.GetKeyUp(KeyCode.R))
 		{
-			m_isBackward = false;
+			m_is_forward = true;
 			OnUpsideChange();
 		}
 	}
@@ -163,15 +168,15 @@ public class OrigamiOperationHandler : MonoBehaviour
 
 	void OnUpsideChange()
 	{
-		if (m_isBackward)
+		if (!m_is_forward)
 		{
-			m_backCamera.SetActive(m_isBackward);
-			m_mainCamera.SetActive(!m_isBackward);
+			m_backCamera.SetActive(!m_is_forward);
+			m_mainCamera.SetActive(m_is_forward);
 		}
 		else
 		{
-			m_mainCamera.SetActive(!m_isBackward);
-			m_backCamera.SetActive(m_isBackward);
+			m_mainCamera.SetActive(m_is_forward);
+			m_backCamera.SetActive(!m_is_forward);
 		}
 	}
 	#endregion

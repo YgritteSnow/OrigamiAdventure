@@ -42,44 +42,34 @@ public class PolygonEdge
 {
 	private static int s_id_accumulator = 0;
 	public static int GetNextID() { return ++s_id_accumulator; }
+	public static int GetEdgeID() { return 0; }
 
-	public PolygonEdge(int h, int t, bool inside)
-	{
-		ID = GetNextID();
-		idx_head = h;
-		idx_toe = t;
-		bInside = inside;
-
-		depth = 0;
-	}
-
-	public PolygonEdge(int id, int h, int t, bool inside)
+	public PolygonEdge(int id, int h, int t)
 	{
 		ID = id;
 		idx_head = h;
 		idx_toe = t;
-		bInside = inside;
 
 		depth = 0;
 	}
 
-	public PolygonEdge(int id, int h, int t, bool inside, int d)
+	public PolygonEdge(int id, int h, int t, int d)
 	{
 		ID = id;
 		idx_head = h;
 		idx_toe = t;
-		bInside = inside;
 		depth = d;
 	}
 	public int ID; // 边的id
 	public int idx_head; // 顶点索引
 	public int idx_toe; // 顶点索引
-	public bool bInside; // 是否是内部的折痕边
 
 	public float distance; // 边的长度
 	public int depth; // 边的深度：初始化时为0，在折叠时，每次折叠，深度+1
 
-	public static PolygonEdge invalid = new PolygonEdge(0, -1, -1, false);
+	public static PolygonEdge invalid = new PolygonEdge(0, -1, -1);
+
+	public bool bInside { get { return ID <= 0; } }
 }
 
 /// <summary>
@@ -149,7 +139,7 @@ public class PolygonData
 		for (int idx = 0; idx < point_pairs.Count; ++idx)
 		{
 			PointPair point_pair = point_pairs[idx];
-			m_edges.Add(new PolygonEdge(point_pair.old_edge.ID, _FindPointIndex(point_pair.head_point), _FindPointIndex(point_pair.toe_point), point_pair.old_edge.bInside, point_pair.old_edge.depth));
+			m_edges.Add(new PolygonEdge(point_pair.old_edge.ID, _FindPointIndex(point_pair.head_point), _FindPointIndex(point_pair.toe_point), point_pair.old_edge.depth));
 		}
 	}
 	void CalPoints()
@@ -567,8 +557,8 @@ public class PolygonData
 			right_point.Add(left2right_point);
 			int new_id = PolygonEdge.GetNextID();
 			cut_edge_id = new_id;
-			left_edge.Add(new PointPair(left2right_point, right2left_point, new PolygonEdge(new_id, 0, 0, true, edge_depth)));
-			right_edge.Add(new PointPair(right2left_point, left2right_point, new PolygonEdge(new_id, 0, 0, true, edge_depth)));
+			left_edge.Add(new PointPair(left2right_point, right2left_point, new PolygonEdge(new_id, 0, 0, edge_depth)));
+			right_edge.Add(new PointPair(right2left_point, left2right_point, new PolygonEdge(new_id, 0, 0, edge_depth)));
 		}
 		else
 		{
