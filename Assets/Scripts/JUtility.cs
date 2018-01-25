@@ -42,6 +42,8 @@ class JUtility
 public class JBinaryTree<TData>
 {
 	public TData Data { get; set; }
+	private int depth = 0;
+	public int Depth { get { return depth; } }
 
 	// 是否是左结点：只在初始化的时候设置
 	private bool m_isLeft = false;
@@ -57,6 +59,7 @@ public class JBinaryTree<TData>
 		m_isLeft = isLeft;
 		parent_node = null;
 		child_node = new JBinaryTree<TData>[2];
+		depth = 0;
 	}
 
 	public JBinaryTree(bool isLeft, TData d)
@@ -65,6 +68,7 @@ public class JBinaryTree<TData>
 		m_isLeft = isLeft;
 		parent_node = null;
 		child_node = new JBinaryTree<TData>[2];
+		depth = 0;
 	}
 
 	#region 遍历
@@ -95,6 +99,17 @@ public class JBinaryTree<TData>
 		else
 		{
 			return true; // 除非一开始depth就小于0，否则不可能出现这种情况
+		}
+	}
+
+	public void TraverseAllWithCheck(CheckAndTraverseFunc func)
+	{
+		if(func(this))
+		{
+			foreach (JBinaryTree<TData> node in child_node)
+			{
+				node.TraverseAllWithCheck(func);
+			}
 		}
 	}
 	#endregion
@@ -162,6 +177,7 @@ public class JBinaryTree<TData>
 			child_node[0].parent_node = this;
 		}
 		child_node[0].Data = data;
+		child_node[0].depth = this.depth + 1;
 	}
 	public void SetRightChild(TData data)
 	{
@@ -171,6 +187,7 @@ public class JBinaryTree<TData>
 			child_node[1].parent_node = this;
 		}
 		child_node[1].Data = data;
+		child_node[1].depth = this.depth + 1;
 	}
 	#endregion
 }

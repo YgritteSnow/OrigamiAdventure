@@ -78,9 +78,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Scripts\ClothCalculater.cs" />
     <Compile Include="Assets\Scripts\DebugOrigamiPaper.cs" />
     <Compile Include="Assets\Scripts\JUtility.cs" />
+    <Compile Include="Assets\Scripts\LineManager.cs" />
     <Compile Include="Assets\Scripts\OrigamiOperationCalculator.cs" />
     <Compile Include="Assets\Scripts\OrigamiOperationHandler.cs" />
     <Compile Include="Assets\Scripts\OrigamiPaper.cs" />

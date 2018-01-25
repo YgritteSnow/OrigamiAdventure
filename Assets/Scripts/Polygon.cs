@@ -87,7 +87,7 @@ public struct PointPair
 }
 #endregion
 
-#region Basic PolygonData and mesh building
+#region Basic PolygonData
 public class PolygonData
 {
 	public List<PolygonPoint> m_points; // 多边形的点，逆时针方向的顺序
@@ -584,6 +584,35 @@ public class PolygonData
 		Vector2 l_ver_dir = new Vector2(l_dir.y, -l_dir.x);
 		float param_t = Vector2.Dot(l_head - r_head, l_ver_dir) / Vector2.Dot(r_toe - r_head, l_ver_dir);
 		return param_t * r_toe + (1 - param_t) * r_head;
+	}
+	#endregion
+
+	#region 获取和直线相交的的两个边的id
+	public void GetCrossingEdge(Vector2 local_head_pos, Vector2 local_toe_pos, out int left_cross_edge, out int right_cross_edge)
+	{
+		left_cross_edge = 0;
+		right_cross_edge = 0;
+		Vector2 line_dir = local_toe_pos - local_head_pos;
+		Vector2 line_normal = new Vector2(line_dir.y, -line_dir.x);
+		foreach (PolygonEdge e in m_edges)
+		{
+			Vector2 left_pos = m_points[e.idx_head].position;
+			Vector2 right_pos = m_points[e.idx_toe].position;
+			int left_sign = System.Math.Sign(Vector2.Dot(left_pos - local_head_pos, line_normal));
+			int right_sign = System.Math.Sign(Vector2.Dot(left_pos - local_head_pos, line_normal));
+			if(left_sign != 0 && right_sign != 0)
+			{
+				if(left_sign > 0)
+				{
+					left_cross_edge = e.ID;
+				}
+				else
+				{
+					right_cross_edge = e.ID;
+				}
+			}
+			
+		}
 	}
 	#endregion
 }

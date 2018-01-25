@@ -11,7 +11,16 @@ public class OrigamiOperationHandler : MonoBehaviour
 	private bool m_isPressing = false;
 	private Vector2 m_press_startPos = Vector2.zero;
 	private Vector2 m_press_curPos = Vector2.zero;
-	private bool m_isFolding = false;
+	private bool m_is_distance_valid = false;
+
+	enum FoldHandlState
+	{
+		Idle = 0, // 空闲
+		FoldAll = 1, // 整层折叠
+		FoldTop = 2, // 最上层折叠
+		FoldInside = 3, // 内侧某层折叠
+	}
+	private FoldHandlState m_cur_state = FoldHandlState.Idle;
 
 	// 反转视角
 	private GameObject m_mainCamera = null; // 正面摄像机
@@ -69,35 +78,55 @@ public class OrigamiOperationHandler : MonoBehaviour
 		Vector3 collide_point = ray.origin - param * ray.direction;
 		return collide_point;
 	}
-
+	
 	void OnPressDown()
 	{
 		m_press_startPos = GetMousePos();
 		m_press_curPos = m_press_startPos;
-		m_isFolding = false;
+		if(m_isReverting)
+		{
+			m_cur_state = FoldHandlState.FoldInside;
+			OnPressDown_foldInside();
+		}
+		else
+		{
+			m_cur_state = FoldHandlState.FoldAll;
+			OnPressDown_foldAll();
+		}
 	}
 
 	void OnPressUp()
 	{
 		m_press_startPos = Vector2.zero;
 		m_press_curPos = Vector2.zero;
-		m_calculator.ClearRevertInfo();
-	}
-
-	void OnPressingDebug()
-	{
-		if (!m_isFolding)
+		if(m_cur_state == FoldHandlState.FoldAll)
 		{
-			m_calculator.AddOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_is_forward);
-			m_isFolding = true;
+			OnPressUp_foldAll();
 		}
-		else
+		else if(m_cur_state == FoldHandlState.FoldInside)
 		{
-			m_calculator.ChangeLastOperation(new Vector2(1, 2f), new Vector2(-1, 2f), Vector2.up, m_is_forward);
+			OnPressUp_foldInside();
 		}
+		m_cur_state = FoldHandlState.Idle;
 	}
 
 	void OnPressing()
+	{
+		if(m_cur_state == FoldHandlState.FoldAll)
+		{
+			OnPressing_foldAll();
+		}
+		else if(m_cur_state == FoldHandlState.FoldInside)
+		{
+			OnPressing_foldInside();
+		}
+	}
+	#endregion
+
+	#region FoldAll 的操作响应
+	void OnPressDown_foldAll() { }
+
+	void OnPressing_foldAll()
 	{
 		m_press_curPos = GetMousePos();
 		if ((m_press_curPos - m_press_startPos).sqrMagnitude < 0.0001)
@@ -115,27 +144,47 @@ public class OrigamiOperationHandler : MonoBehaviour
 		Debug.DrawLine(m_press_startPos, m_press_curPos, Color.green);
 #endif
 
-		if (!m_isFolding)
+		if (!m_is_distance_valid)
 		{
-			if (!m_isReverting)
-			{
-				// 正常模式下：立即进入折叠期
-				m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
-				m_isFolding = true;
-			}
-			else
-			{
-				// 撤销模式下：成功时，才进入折叠期；在此之前，一直检测是否可以取消折叠
-				if (m_calculator.RevertOperation(m_press_curPos, m_is_forward))
-				{
-					m_isFolding = true;
-				}
-			}
+			m_calculator.AddOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
+			m_is_distance_valid = true;
 		}
 		else
 		{
 			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
 		}
+	}
+
+	void OnPressUp_foldAll()
+	{
+		m_is_distance_valid = false;
+	}
+	#endregion
+	
+	#region FoldInside 操作响应
+	void OnPressDown_foldInside()
+	{
+	}
+
+	void OnPressing_foldInside()
+	{
+		if (!m_is_distance_valid)
+		{
+			if (m_calculator.RevertOperation(m_press_curPos, m_is_forward))
+			{
+				m_is_distance_valid = true;
+			}
+		}
+		else
+		{
+			//
+		}
+	}
+
+	void OnPressUp_foldInside()
+	{
+		m_calculator.ClearRevertInfo();
+		m_is_distance_valid = false;
 	}
 	#endregion
 
@@ -184,21 +233,13 @@ public class OrigamiOperationHandler : MonoBehaviour
 	#region 撤销折叠控制
 	void OnUpdateForRevertFold()
 	{
-		// 折叠操作期间不改变撤销状态
-		if(m_isFolding)
-		{
-			return;
-		}
-
 		if (Input.GetKeyDown(KeyCode.D))
 		{
 			m_isReverting = true;
-			OnUpsideChange();
 		}
 		if (Input.GetKeyUp(KeyCode.D))
 		{
 			m_isReverting = false;
-			OnUpsideChange();
 		}
 	}
 	#endregion
