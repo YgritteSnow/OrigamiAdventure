@@ -102,13 +102,42 @@ public class JBinaryTree<TData>
 		}
 	}
 
+	public bool TraverseLeafWithCheck(CheckAndTraverseFunc func)
+	{
+		bool has_child = false;
+		if(HasLeftChild())
+		{
+			if(!GetLeftNode().TraverseLeafWithCheck(func))
+			{
+				return false;
+			}
+			has_child = true;
+		}
+		if(HasRightChild())
+		{
+			if(!GetRightNode().TraverseLeafWithCheck(func))
+			{
+				return false;
+			}
+			has_child = true;
+		}
+		if(!has_child)
+		{
+			return func(this);
+		}
+		return true;
+	}
+
 	public void TraverseAllWithCheck(CheckAndTraverseFunc func)
 	{
 		if(func(this))
 		{
 			foreach (JBinaryTree<TData> node in child_node)
 			{
-				node.TraverseAllWithCheck(func);
+				if (node != null)
+				{
+					node.TraverseAllWithCheck(func);
+				}
 			}
 		}
 	}
@@ -146,6 +175,14 @@ public class JBinaryTree<TData>
 	public bool HasLeftChild()
 	{
 		return child_node[0] != null;
+	}
+	public JBinaryTree<TData> GetLeftNode()
+	{
+		return child_node[0];
+	}
+	public JBinaryTree<TData> GetRightNode()
+	{
+		return child_node[1];
 	}
 	public TData GetLeftChild()
 	{

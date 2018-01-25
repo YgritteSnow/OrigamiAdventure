@@ -11,30 +11,54 @@ public class OrigamiOperator
 	{
 		head_pos = Vector3.zero;
 		toe_pos = Vector3.zero;
-		touch_dir = Vector3.zero;
+		_touch_dir = Vector3.right;
 		is_forward = true;
 	}
 	public Vector2 head_pos;
 	public Vector2 toe_pos;
-	public Vector2 touch_dir;
 	public bool is_forward;
 
-	public Vector2 normalised_touch_dir
+	private Vector2 _touch_dir;
+	public Vector2 touch_dir
 	{
-		get
+		get { return _touch_dir; }
+		set
 		{
 			Vector2 res = head_pos - toe_pos;
 			res = new Vector2(res.y, -res.x);
-			if (Vector2.Dot(res, touch_dir) < 0)
+			if (Vector2.Dot(res, value) < 0)
 			{
 				res = -res;
 			}
 			res.Normalize();
-			return res;
+			_touch_dir = res;
 		}
+	}
+
+	public OrigamiOperator TransformToLocal(Transform trans)
+	{
+		OrigamiOperator result = new OrigamiOperator();
+		result.head_pos = trans.InverseTransformPoint(head_pos);
+		result.toe_pos = trans.InverseTransformPoint(toe_pos);
+		result.touch_dir = trans.InverseTransformVector(touch_dir);
+		result.is_forward = is_forward;
+		return result;
+	}
+
+	public OrigamiOperator TransformToWorld(Transform trans)
+	{
+		OrigamiOperator result = new OrigamiOperator();
+		result.head_pos = trans.TransformPoint(head_pos);
+		result.toe_pos = trans.TransformPoint(toe_pos);
+		result.touch_dir = trans.TransformVector(touch_dir);
+		result.is_forward = is_forward;
+		return result;
 	}
 }
 
+/// <summary>
+/// 折纸操作的每一个节点
+/// </summary>
 public class OrigamiOperationNode
 {
 	private OrigamiOperationNode()
@@ -46,6 +70,7 @@ public class OrigamiOperationNode
 		fold_order = 0;
 		fold_forward = true;
 		fold_edgeid = 0;
+		fold_op = null;
 	}
 
 	public OrigamiOperationNode(Transform t)
@@ -57,6 +82,7 @@ public class OrigamiOperationNode
 		fold_order = 0;
 		fold_forward = true;
 		fold_edgeid = 0;
+		fold_op = null;
 	}
 
 	public Transform trans;
@@ -66,6 +92,7 @@ public class OrigamiOperationNode
 	public int fold_order; // 对于本层而言，其折叠层级
 	public bool fold_forward; // 当时折叠时的正反状态
 	public int fold_edgeid; // 折叠时新增的edge_id
+	public OrigamiOperator fold_op; // 折叠时的操作（在父亲坐标系下）
 }
 
 /// <summary>
@@ -77,8 +104,9 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	List<OrigamiOperator> m_operators = new List<OrigamiOperator>();
 	JBinaryTree<OrigamiOperationNode> m_operatorTree;
 
-	JBinaryTree<OrigamiOperationNode> m_revertingNode = null; // 当revert的时候，所使用的最高结点
-	int m_revertingDepth; // revert时的深度
+	JBinaryTree<OrigamiOperationNode> m_addingOperationRoot = null; // 当revert的时候，所使用的最高结点
+
+	JBinaryTree<OrigamiOperationNode> m_changingNode = null; // 当部分修改时的时候，所使用的最高节点
 
 	// Use this for initialization
 	void Start ()
@@ -87,9 +115,8 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		m_operatorTree = new JBinaryTree<OrigamiOperationNode>(true, root);
 	}
 
-	#region 对外的添加、修改、删除函数
-	// 添加一个操作
-	public bool AddOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
+	#region 添加操作
+	public void AddOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
 		OrigamiOperator op = new OrigamiOperator();
 		op.head_pos = world_head_pos;
@@ -98,29 +125,43 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.is_forward = is_forward;
 		m_operators.Add(op);
 
-		TraverseSetLastOperator(op);
-
-		return true;
+		TraverseOneDepthToChangeOperator(m_operatorTree, m_operators.Count - 1, op);
 	}
-	// 用最少的变化，添加一个操作
-	public bool AddOperationInLeastChange(Vector2 world_choose_pos, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
+	
+	public void AddOperationOnlyTop(Vector2 world_choose_pos, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
 		// 获取触摸的多边形
 		JBinaryTree<OrigamiOperationNode> touching_node = GetTouchingNode(world_choose_pos, is_forward);
 		if (touching_node == null) // 如果没有触摸到任何多边形则返回
 		{
-			return false;
+			return;
 		}
-		
+
+		// 记录当前正在变化的节点
 		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(touching_node, world_head_pos, world_toe_pos, is_forward);
-		// todo 该这里了。这个change_parent应该记录下来，然后改变的过程中，只改变它。一旦变化，重新计算新的parent
-		// 前边的AddOperation也应该如此优化
-		return true;
+		m_changingNode = change_parent;
+
+		OrigamiOperator op = new OrigamiOperator();
+		op.head_pos = world_head_pos;
+		op.toe_pos = world_toe_pos;
+		op.touch_dir = world_fold_dir;
+		op.is_forward = is_forward;
+		m_operators.Add(op);
+
+		// todo 该这里了！！！ 去掉 m_operators, 增加对除了changingnNode 之外的node的traverse，对其增加空op
+		TraverseOneDepthToChangeOperator(m_changingNode, m_operators.Count - 1 - m_changingNode.Depth, op);
 	}
+	public void ClearAddOperationOnlyTop()
+	{
+		m_addingOperationRoot = null;
+	}
+	#endregion
+
+	#region 修改上次添加的操作
 	// 修改最后一个操作
 	public bool ChangeLastOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
-		if(m_operators.Count == 0)
+		if (m_operators.Count == 0)
 		{
 			Debug.LogError("no operator!");
 		}
@@ -131,73 +172,65 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
 
-		if (m_revertingNode == null)
+		if (m_addingOperationRoot == null)
 		{
-			TraverseSetLastOperator(op);
+			TraverseOneDepthToChangeOperator(m_operatorTree, op);
 		}
 		else
 		{
-			TraverseOperator(m_revertingNode, m_revertingDepth, op);
+			TraverseOneDepthToChangeOperator(m_addingOperationRoot, op);
 		}
 
 		return true;
 	}
-	// 撤销某一个操作，并将新增加的操作作为最后一个操作
-	public bool RevertOperation(Vector2 world_touching_pos, bool is_forward)
+	#endregion
+
+	#region 用最少的变化，添加一个操作（这个操作其实是revert）
+	public bool AddOperationInLeastChange(Vector2 world_choose_pos, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
-		// 获得所触摸的多边形
-		JBinaryTree<OrigamiOperationNode> touching_node = GetTouchingNode(world_touching_pos, is_forward);
-		if(touching_node == null) // 如果没有触摸到任何多边形
+		// 获取触摸的多边形
+		JBinaryTree<OrigamiOperationNode> touching_node = GetTouchingNode(world_choose_pos, is_forward);
+		if (touching_node == null) // 如果没有触摸到任何多边形则返回
 		{
 			return false;
 		}
+		
+		// 记录当前正在变化的节点
+		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(touching_node, world_head_pos, world_toe_pos, is_forward);
+		m_changingNode = change_parent;
 
-		// 向上查找直至找到一个右侧节点（正面观察+正面折叠）或左侧节点（反+正）
-		int last_searched_depth = 0;
-		int cur_searched_depth;
-		do
-		{
-			JBinaryTree<OrigamiOperationNode> reverting_parent = GetCanRevertParent(touching_node, is_forward, last_searched_depth, out cur_searched_depth);
-			if (reverting_parent == null)
-			{
-				return false;
-			}
-			last_searched_depth = cur_searched_depth;
+		ChangeOperationInLeaseChange(world_head_pos, world_toe_pos, world_fold_dir, is_forward);
 
-			// 检查该多边形是否可以移动
-			if (CheckCanMoveNode(reverting_parent, cur_searched_depth))
-			{
-				RevertNode(reverting_parent, cur_searched_depth);
-				return true;
-			}
-		} while (true);
+		return true;
 	}
-	public void ClearRevertInfo()
+	public void ChangeOperationInLeaseChange(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
-		m_revertingNode = null;
-		m_revertingDepth = 0;
+		if(m_changingNode == null)
+		{
+			return;
+		}
+		OrigamiOperator op = new OrigamiOperator();
+		op.head_pos = world_head_pos;
+		op.toe_pos = world_toe_pos;
+		op.touch_dir = world_fold_dir;
+		op.is_forward = is_forward;
+
+		op = op.TransformToLocal(m_changingNode.Data.trans);
+		ResetNodeOperationAndChild(m_changingNode, op);
+	}
+	public void ClearLastOperationInLeaseChange()
+	{
+		m_changingNode = null;
 	}
 	#endregion
 
 	#region 使对树的operation生效，包括遍历、遍历时的操作
-	bool TraverseSetLastOperator(OrigamiOperator op)
+	bool TraverseOneDepthToChangeOperator(JBinaryTree<OrigamiOperationNode> origin, OrigamiOperator op)
 	{
-		m_operatorTree.TraverseOneDepthWithCheck(m_operators.Count - 1
-			, delegate (JBinaryTree<OrigamiOperationNode> node)
+		origin.TraverseLeafWithCheck(delegate (JBinaryTree<OrigamiOperationNode> node)
 				{
-					return SetOperatorForNode(m_operators.Count, node, op);
+					return SetOperatorForNode(node, op);
 				});
-
-		return true;
-	}
-
-	bool TraverseOperator(JBinaryTree<OrigamiOperationNode> root, int depth, OrigamiOperator op)
-	{
-		root.TraverseOneDepthWithCheck(depth
-			, delegate (JBinaryTree<OrigamiOperationNode> node)
-			{
-				return SetOperatorForNode(m_operators.Count, node, op);
-			});
 
 		return true;
 	}
@@ -238,11 +271,10 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	}
 
 	// 根据折叠产生的edgeid来查找所折叠的父亲
-	JBinaryTree<OrigamiOperationNode> FindNodeByEdgeId(int edge_id, out int depth)
+	JBinaryTree<OrigamiOperationNode> FindNodeByEdgeId(int edge_id)
 	{
-		depth = m_operators.Count;
 		JBinaryTree<OrigamiOperationNode> result = null;
-		m_operatorTree.TraverseOneDepthWithCheck(m_operators.Count - 1,
+		m_operatorTree.TraverseAllWithCheck(
 			delegate (JBinaryTree<OrigamiOperationNode> node)
 			{
 				if(node.Data.fold_edgeid == edge_id)
@@ -256,16 +288,19 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	}
 	#endregion
 
-	#region 重设一个叶子节点的操作
+	#region 对单个节点进行 OrigamiOperation
 	/// <summary>
 	/// 为node计算并添加操作。
 	/// 通常情况下不应该在遍历时直接修改树，但是这里的操作内容不会影响遍历结果，所以直接这么搞了嗯嗯嗯
 	/// </summary>
-	bool SetOperatorForNode(int fold_order, JBinaryTree<OrigamiOperationNode> node, OrigamiOperator op)
+	bool SetOperatorForNode(JBinaryTree<OrigamiOperationNode> node, OrigamiOperator op)
 	{
+		node.Data.fold_op = op.TransformToLocal(node.Data.trans);
+		int fold_order = node.Depth + 1;
+
 		Vector2 local_head_pos = node.Data.trans.InverseTransformPoint(op.head_pos);
 		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
-		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.normalised_touch_dir);
+		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
 		int side = node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
 		if(side > 0) // 不需要翻折的一侧
 		{
@@ -279,9 +314,8 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			}
 			else
 			{
-				left = GenerateObjAndNode("child_all_left", node.Data.trans, node.Data.polygon);
+				left = GenerateObjAndNode("child_left", node.Data.trans, node.Data.polygon);
 			}
-			left.fold_edgeid = 0;
 			left.fold_order = GetLeftDepth(fold_order, node.Data.fold_order, op.is_forward);
 			left.fold_forward = op.is_forward;
 			left.trans.GetComponent<Polygon>().SetPolygonDepth(left.fold_order);
@@ -306,7 +340,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			}
 			else
 			{
-				right = GenerateObjAndNode("child_all_right", node.Data.trans, node.Data.polygon);
+				right = GenerateObjAndNode("child_right", node.Data.trans, node.Data.polygon);
 			}
 			right.fold_edgeid = 0;
 			right.fold_order = GetRightDepth(fold_order, node.Data.fold_order, op.is_forward);
@@ -338,7 +372,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				}
 				else
 				{
-					right = GenerateObjAndNode("child_cut_right", node.Data.trans, right_p);
+					right = GenerateObjAndNode("child_right", node.Data.trans, right_p);
 				}
 				OrigamiOperationNode left;
 				if (node.HasLeftChild())
@@ -350,7 +384,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				}
 				else
 				{
-					left = GenerateObjAndNode("child_cut_left", node.Data.trans, left_p);
+					left = GenerateObjAndNode("child_left", node.Data.trans, left_p);
 				}
 
 				left.fold_edgeid = cut_edge_id;
@@ -378,15 +412,31 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	}
 	#endregion
 
-	#region 撤销所用的一些函数
+	#region 对节点及其所有孩子，重新计算op
+	void ResetNodeOperationAndChild(JBinaryTree<OrigamiOperationNode> origin, OrigamiOperator op_local)
+	{
+		SetOperatorForNode(origin, op_local);
+
+		if (origin.HasLeftChild())
+		{
+			ResetNodeOperationAndChild(origin.GetLeftNode(), origin.GetLeftChild().fold_op);
+		}
+		if(origin.HasRightChild())
+		{
+			ResetNodeOperationAndChild(origin.GetRightNode(), origin.GetLeftChild().fold_op);
+		}
+	}
+	#endregion
+
+	#region 获取触摸到的节点
 	JBinaryTree<OrigamiOperationNode> GetTouchingNode(Vector2 world_touching_pos, bool is_forward)
 	{
 		JBinaryTree<OrigamiOperationNode> result = null;
 		// 从上到下遍历多边形，查找触摸点所落在的结点
-		m_operatorTree.TraverseOneDepthByOrder(m_operators.Count - 1,
+		m_operatorTree.TraverseOneDepthByOrder(m_operators.Count,
 			delegate (OrigamiOperationNode node)
 			{
-				return is_forward ? node.fold_order : -node.fold_order;
+				return is_forward ? -node.fold_order : node.fold_order;
 			},
 			delegate (JBinaryTree<OrigamiOperationNode> node)
 			{
@@ -401,9 +451,12 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 		return result;
 	}
+	#endregion
 
+	#region 获取父亲中的第一个右侧节点 [Obsolete]
+	[System.Obsolete("obsolete by now.", true)]
 	JBinaryTree<OrigamiOperationNode> GetCanRevertParent(JBinaryTree<OrigamiOperationNode> origin, bool is_forward, int origin_searched_depth, out int searched_depth)
-	{// 向上查找直至找到一个右侧节点
+	{
 		searched_depth = origin_searched_depth;
 		do {
 			if (origin == m_operatorTree || origin.parent_node == null)
@@ -422,6 +475,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		return origin;
 	}
 
+	[System.Obsolete("obsolete by now.", true)]
 	bool CheckCanMoveNode(JBinaryTree<OrigamiOperationNode> origin, int origin_height)
 	{// 检查节点所用的edge_id是否被超过1个叶子所使用，超过说明已经被二次折叠了
 		int origin_edge_id = origin.Data.fold_edgeid;
@@ -438,16 +492,17 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				}
 				return used_count <= 1;
 			});
-		return false;
+		return used_count <= 1;
 	}
 
+	[System.Obsolete("obsolete by now.", true)]
 	void RevertNode(JBinaryTree<OrigamiOperationNode> node, int node_height)
 	{
 		// todo 撤销折叠某一层：做成折叠单层的扩展。所以先写单层的折叠
 	}
 	#endregion
 
-	#region 单层折叠相关
+	#region 查找需要修改的最高层的节点
 	JBinaryTree<OrigamiOperationNode> FindNeedChangeTallestParent(JBinaryTree<OrigamiOperationNode> origin, 
 		Vector2 world_head_pos, Vector2 world_toe_pos, bool is_forward)
 	{
@@ -476,11 +531,11 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		while(++checking_idx < need_check_edges.Count)
 		{
 			int checking_depth;
-			JBinaryTree<OrigamiOperationNode> checking_node = FindNodeByEdgeId(need_check_edges[checking_idx], out checking_depth);
-			if(min_depth > checking_depth)
+			JBinaryTree<OrigamiOperationNode> checking_node = FindNodeByEdgeId(need_check_edges[checking_idx]);
+			if(min_depth > checking_node.Depth)
 			{
 				final_root = checking_node;
-				min_depth = checking_depth;
+				min_depth = checking_node.Depth;
 			}
 
 			List<int> need_add_edge = SearchAllNeedChangeEdgeIdsInChild(checking_node, world_head_pos, world_toe_pos, checked_nodes);
@@ -506,7 +561,8 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 		return final_root;
 	}
-
+	#endregion
+	#region 查找孩子中有交点的所有edge_id
 	List<int> SearchAllNeedChangeEdgeIdsInChild(JBinaryTree<OrigamiOperationNode> origin, 
 		Vector2 world_head_pos, Vector2 world_toe_pos,
 		List<JBinaryTree<OrigamiOperationNode>> checked_nodes)

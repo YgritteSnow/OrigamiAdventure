@@ -600,7 +600,7 @@ public class PolygonData
 			Vector2 right_pos = m_points[e.idx_toe].position;
 			int left_sign = System.Math.Sign(Vector2.Dot(left_pos - local_head_pos, line_normal));
 			int right_sign = System.Math.Sign(Vector2.Dot(left_pos - local_head_pos, line_normal));
-			if(left_sign != 0 && right_sign != 0)
+			if(left_sign != 0 && right_sign != 0 && left_sign != right_sign)
 			{
 				if(left_sign > 0)
 				{

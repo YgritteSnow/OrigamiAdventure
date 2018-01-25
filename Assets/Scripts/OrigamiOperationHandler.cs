@@ -28,7 +28,10 @@ public class OrigamiOperationHandler : MonoBehaviour
 	private bool m_is_forward = true; // 是否是背面模式
 
 	// 撤销折叠
-	public bool m_isReverting = false; // 是否正在撤销
+	private bool m_isReverting = false; // 是否按下了撤销按键
+
+	// 单层折叠
+	private bool m_isFoldingOne = false; // 是否按下了单层折叠按键
 
 	// Use this for initialization
 	void Awake()
@@ -47,6 +50,7 @@ public class OrigamiOperationHandler : MonoBehaviour
 		OnUpdateForBackward();
 		OnUpdateForMouseDrag();
 		OnUpdateForRevertFold();
+		OnUpdateForFoldOne();
 	}
 
 	#region 鼠标拖拽控制
@@ -83,7 +87,12 @@ public class OrigamiOperationHandler : MonoBehaviour
 	{
 		m_press_startPos = GetMousePos();
 		m_press_curPos = m_press_startPos;
-		if(m_isReverting)
+		if(m_isFoldingOne)
+		{
+			m_cur_state = FoldHandlState.FoldTop;
+			OnPressDown_foldTop();
+		}
+		else if(m_isReverting)
 		{
 			m_cur_state = FoldHandlState.FoldInside;
 			OnPressDown_foldInside();
@@ -107,6 +116,10 @@ public class OrigamiOperationHandler : MonoBehaviour
 		{
 			OnPressUp_foldInside();
 		}
+		else if(m_cur_state == FoldHandlState.FoldTop)
+		{
+			OnPressUp_foldTop();
+		}
 		m_cur_state = FoldHandlState.Idle;
 	}
 
@@ -119,6 +132,10 @@ public class OrigamiOperationHandler : MonoBehaviour
 		else if(m_cur_state == FoldHandlState.FoldInside)
 		{
 			OnPressing_foldInside();
+		}
+		else if(m_cur_state == FoldHandlState.FoldTop)
+		{
+			OnPressing_foldTop();
 		}
 	}
 	#endregion
@@ -161,30 +178,73 @@ public class OrigamiOperationHandler : MonoBehaviour
 	}
 	#endregion
 	
-	#region FoldInside 操作响应
-	void OnPressDown_foldInside()
+	#region FoldTop 操作响应
+	void OnPressDown_foldTop()
 	{
 	}
 
-	void OnPressing_foldInside()
+	void OnPressing_foldTop()
 	{
+		m_press_curPos = GetMousePos();
+		if ((m_press_curPos - m_press_startPos).sqrMagnitude < 0.0001)
+		{
+			return;
+		}
+
+		Vector2 mid_pos = (m_press_startPos + m_press_curPos) / 2;
+		Vector2 fold_dir = m_press_curPos - m_press_startPos;
+		fold_dir.Normalize();
+		Vector2 edge_dir = new Vector2(fold_dir.y, -fold_dir.x);
+
 		if (!m_is_distance_valid)
 		{
-			if (m_calculator.RevertOperation(m_press_curPos, m_is_forward))
-			{
-				m_is_distance_valid = true;
-			}
+			m_calculator.AddOperationOnlyTop(m_press_startPos, mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
+			m_is_distance_valid = true;
 		}
 		else
 		{
-			//
+			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
+		}
+	}
+
+	void OnPressUp_foldTop()
+	{
+		m_is_distance_valid = false;
+		m_calculator.ClearAddOperationOnlyTop();
+	}
+	#endregion
+
+	#region FoldInside 的操作响应
+	void OnPressDown_foldInside() { }
+
+	void OnPressing_foldInside()
+	{
+		m_press_curPos = GetMousePos();
+		if ((m_press_curPos - m_press_startPos).sqrMagnitude < 0.0001)
+		{
+			return;
+		}
+
+		Vector2 mid_pos = (m_press_startPos + m_press_curPos) / 2;
+		Vector2 fold_dir = m_press_curPos - m_press_startPos;
+		fold_dir.Normalize();
+		Vector2 edge_dir = new Vector2(fold_dir.y, -fold_dir.x);
+
+		if (!m_is_distance_valid)
+		{
+			m_calculator.AddOperationInLeastChange(m_press_startPos, mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
+			m_is_distance_valid = true;
+		}
+		else
+		{
+			m_calculator.ChangeOperationInLeaseChange(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
 		}
 	}
 
 	void OnPressUp_foldInside()
 	{
-		m_calculator.ClearRevertInfo();
 		m_is_distance_valid = false;
+		m_calculator.ClearLastOperationInLeaseChange();
 	}
 	#endregion
 
@@ -240,6 +300,20 @@ public class OrigamiOperationHandler : MonoBehaviour
 		if (Input.GetKeyUp(KeyCode.D))
 		{
 			m_isReverting = false;
+		}
+	}
+	#endregion
+
+	#region 单层折叠控制
+	void OnUpdateForFoldOne()
+	{
+		if (Input.GetKeyDown(KeyCode.F))
+		{
+			m_isFoldingOne = true;
+		}
+		if (Input.GetKeyUp(KeyCode.F))
+		{
+			m_isFoldingOne = false;
 		}
 	}
 	#endregion
