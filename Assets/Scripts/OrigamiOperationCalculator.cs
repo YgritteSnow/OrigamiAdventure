@@ -9,8 +9,8 @@ public class OrigamiOperator
 {
 	public OrigamiOperator()
 	{
-		head_pos = Vector3.zero;
-		toe_pos = Vector3.zero;
+		head_pos = new Vector3(-9999, 1);
+		toe_pos = new Vector3(-9999, -1);
 		_touch_dir = Vector3.right;
 		is_forward = true;
 	}
@@ -54,6 +54,8 @@ public class OrigamiOperator
 		result.is_forward = is_forward;
 		return result;
 	}
+
+	public static OrigamiOperator empty = new OrigamiOperator();
 }
 
 /// <summary>
@@ -100,9 +102,9 @@ public class OrigamiOperationNode
 /// </summary>
 public class OrigamiOperationCalculator : MonoBehaviour {
 	public GameObject m_sample;
-
-	List<OrigamiOperator> m_operators = new List<OrigamiOperator>();
+	
 	JBinaryTree<OrigamiOperationNode> m_operatorTree;
+	int m_cur_depth = 0;
 
 	JBinaryTree<OrigamiOperationNode> m_addingOperationRoot = null; // 当revert的时候，所使用的最高结点
 
@@ -123,9 +125,8 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
-		m_operators.Add(op);
-
-		TraverseOneDepthToChangeOperator(m_operatorTree, m_operators.Count - 1, op);
+		
+		TraverseOneDepthToChangeOperator(m_operatorTree, m_cur_depth, op);
 	}
 	
 	public void AddOperationOnlyTop(Vector2 world_choose_pos, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
@@ -146,14 +147,17 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
-		m_operators.Add(op);
-
-		// todo 该这里了！！！ 去掉 m_operators, 增加对除了changingnNode 之外的node的traverse，对其增加空op
-		TraverseOneDepthToChangeOperator(m_changingNode, m_operators.Count - 1 - m_changingNode.Depth, op);
+		
+		TraverseOneDepthToChangeOperator(m_changingNode, m_cur_depth - m_changingNode.Depth, op);
+		TraverseOneDepthToChangeOperatorWithCull(m_operatorTree, m_changingNode, m_cur_depth - m_changingNode.Depth, OrigamiOperator.empty);
 	}
-	public void ClearAddOperationOnlyTop()
+	#endregion
+
+	#region 决定添加。此时判断并消除最下边一层的无用的节点（不增加depth即可） todo
+	public void ConfirmAddOperation()
 	{
 		m_addingOperationRoot = null;
+		++m_cur_depth;
 	}
 	#endregion
 
@@ -161,12 +165,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	// 修改最后一个操作
 	public bool ChangeLastOperation(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
-		if (m_operators.Count == 0)
-		{
-			Debug.LogError("no operator!");
-		}
-
-		OrigamiOperator op = m_operators[m_operators.Count - 1];
+		OrigamiOperator op = new OrigamiOperator();
 		op.head_pos = world_head_pos;
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
@@ -174,11 +173,11 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 		if (m_addingOperationRoot == null)
 		{
-			TraverseOneDepthToChangeOperator(m_operatorTree, op);
+			TraverseOneDepthToChangeOperator(m_operatorTree, m_cur_depth, op);
 		}
 		else
 		{
-			TraverseOneDepthToChangeOperator(m_addingOperationRoot, op);
+			TraverseOneDepthToChangeOperator(m_addingOperationRoot, m_cur_depth - m_addingOperationRoot.Depth, op);
 		}
 
 		return true;
@@ -225,12 +224,32 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	#endregion
 
 	#region 使对树的operation生效，包括遍历、遍历时的操作
-	bool TraverseOneDepthToChangeOperator(JBinaryTree<OrigamiOperationNode> origin, OrigamiOperator op)
+	bool TraverseOneDepthToChangeOperator(JBinaryTree<OrigamiOperationNode> origin, int depth, OrigamiOperator op)
 	{
-		origin.TraverseLeafWithCheck(delegate (JBinaryTree<OrigamiOperationNode> node)
+		origin.TraverseOneDepthWithCheck(depth, delegate (JBinaryTree<OrigamiOperationNode> node)
 				{
 					return SetOperatorForNode(node, op);
 				});
+
+		return true;
+	}
+
+	bool TraverseOneDepthToChangeOperatorWithCull(JBinaryTree<OrigamiOperationNode> origin, JBinaryTree<OrigamiOperationNode> cull_node,
+		int depth, OrigamiOperator op)
+	{
+		int real_depth = origin.Depth + depth;
+		origin.TraverseAllWithCheck(delegate (JBinaryTree<OrigamiOperationNode> node)
+		{
+			if(node == cull_node)
+			{
+				return false; // 停止本分支的遍历
+			}
+			if(node.Depth != real_depth)
+			{
+				return true; // 继续遍历
+			}
+			return SetOperatorForNode(node, op);
+		});
 
 		return true;
 	}
@@ -417,13 +436,13 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	{
 		SetOperatorForNode(origin, op_local);
 
-		if (origin.HasLeftChild())
+		if (origin.HasLeftChild() && origin.GetLeftChild().fold_op != null)
 		{
 			ResetNodeOperationAndChild(origin.GetLeftNode(), origin.GetLeftChild().fold_op);
 		}
-		if(origin.HasRightChild())
+		if(origin.HasRightChild() && origin.GetRightChild().fold_op != null)
 		{
-			ResetNodeOperationAndChild(origin.GetRightNode(), origin.GetLeftChild().fold_op);
+			ResetNodeOperationAndChild(origin.GetRightNode(), origin.GetRightChild().fold_op);
 		}
 	}
 	#endregion
@@ -433,7 +452,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	{
 		JBinaryTree<OrigamiOperationNode> result = null;
 		// 从上到下遍历多边形，查找触摸点所落在的结点
-		m_operatorTree.TraverseOneDepthByOrder(m_operators.Count,
+		m_operatorTree.TraverseOneDepthByOrder(m_cur_depth,
 			delegate (OrigamiOperationNode node)
 			{
 				return is_forward ? -node.fold_order : node.fold_order;
@@ -526,11 +545,10 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		JBinaryTree<OrigamiOperationNode> final_root = origin; // 初始化为当前点
 		checked_nodes.Add(origin);
 
-		int min_depth = m_operators.Count;
+		int min_depth = m_cur_depth;
 		int checking_idx = -1;
 		while(++checking_idx < need_check_edges.Count)
 		{
-			int checking_depth;
 			JBinaryTree<OrigamiOperationNode> checking_node = FindNodeByEdgeId(need_check_edges[checking_idx]);
 			if(min_depth > checking_node.Depth)
 			{

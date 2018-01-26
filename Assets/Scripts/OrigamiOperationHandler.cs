@@ -175,6 +175,7 @@ public class OrigamiOperationHandler : MonoBehaviour
 	void OnPressUp_foldAll()
 	{
 		m_is_distance_valid = false;
+		m_calculator.ConfirmAddOperation();
 	}
 	#endregion
 	
@@ -210,7 +211,7 @@ public class OrigamiOperationHandler : MonoBehaviour
 	void OnPressUp_foldTop()
 	{
 		m_is_distance_valid = false;
-		m_calculator.ClearAddOperationOnlyTop();
+		m_calculator.ConfirmAddOperation();
 	}
 	#endregion
 
