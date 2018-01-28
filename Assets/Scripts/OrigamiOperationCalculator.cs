@@ -107,6 +107,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	int m_cur_depth = 0;
 
 	JBinaryTree<OrigamiOperationNode> m_addingOperationRoot = null; // 当revert的时候，所使用的最高结点
+	JBinaryTree<OrigamiOperationNode> m_originTouchNode = null; // 当revert的时候，初始触摸着的点
 
 	JBinaryTree<OrigamiOperationNode> m_revertingOperationNode = null; // 当部分修改时的时候，所使用的最高节点
 
@@ -139,6 +140,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		{
 			return;
 		}
+		m_originTouchNode = touching_node;
 
 		// 记录当前正在变化的节点
 		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(touching_node, world_head_pos, world_toe_pos, is_forward);
@@ -166,6 +168,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	public void ConfirmAddOperation()
 	{
 		m_addingOperationRoot = null;
+		m_originTouchNode = null;
 	}
 	#endregion
 
@@ -185,7 +188,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 	public bool ChangeLastOperationAndCheckFoldTop(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
-		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(m_addingOperationRoot, world_head_pos, world_toe_pos, is_forward);
+		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(m_originTouchNode, world_head_pos, world_toe_pos, is_forward);
 		if (m_addingOperationRoot != change_parent)
 		{
 			RemoveLastOperation(m_addingOperationRoot);
