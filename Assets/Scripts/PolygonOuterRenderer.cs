@@ -158,7 +158,7 @@ public class PolygonOuterRenderer : MonoBehaviour
 		{
 			m_outerMesh = GameObject.Instantiate(m_sample);
 			m_outerMesh.transform.parent = transform;
-			m_outerMesh.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+			m_outerMesh.transform.SetPositionAndRotation(transform.position, transform.rotation);
 			m_outerMesh.name = "outer";
 		}
 		m_outerMesh.GetComponent<MeshFilter>().mesh = m_mesh;

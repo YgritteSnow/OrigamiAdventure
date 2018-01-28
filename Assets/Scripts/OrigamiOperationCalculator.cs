@@ -102,18 +102,18 @@ public class OrigamiOperationNode
 /// </summary>
 public class OrigamiOperationCalculator : MonoBehaviour {
 	public GameObject m_sample;
-	
+
 	JBinaryTree<OrigamiOperationNode> m_operatorTree;
 	int m_cur_depth = 0;
 
 	JBinaryTree<OrigamiOperationNode> m_addingOperationRoot = null; // 当revert的时候，所使用的最高结点
 
-	JBinaryTree<OrigamiOperationNode> m_changingNode = null; // 当部分修改时的时候，所使用的最高节点
+	JBinaryTree<OrigamiOperationNode> m_revertingOperationNode = null; // 当部分修改时的时候，所使用的最高节点
 
 	// Use this for initialization
-	void Start ()
+	void Start()
 	{
-		OrigamiOperationNode root = GenerateObjAndNode("root", transform, JUtility.GetRectPolygon(1,1));
+		OrigamiOperationNode root = GenerateObjAndNode("root", transform, JUtility.GetRectPolygon(1, 1));
 		m_operatorTree = new JBinaryTree<OrigamiOperationNode>(true, root);
 	}
 
@@ -125,10 +125,12 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
-		
+
 		TraverseOneDepthToChangeOperator(m_operatorTree, m_cur_depth, op);
+
+		++m_cur_depth;
 	}
-	
+
 	public void AddOperationOnlyTop(Vector2 world_choose_pos, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
 		// 获取触摸的多边形
@@ -140,16 +142,23 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 		// 记录当前正在变化的节点
 		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(touching_node, world_head_pos, world_toe_pos, is_forward);
-		m_changingNode = change_parent;
+		AddOperationOnlyTop(change_parent, world_head_pos, world_toe_pos, world_fold_dir, is_forward);
+	}
+
+	public void AddOperationOnlyTop(JBinaryTree<OrigamiOperationNode> change_parent, Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
+	{
+		m_addingOperationRoot = change_parent;
 
 		OrigamiOperator op = new OrigamiOperator();
 		op.head_pos = world_head_pos;
 		op.toe_pos = world_toe_pos;
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
-		
-		TraverseOneDepthToChangeOperator(m_changingNode, m_cur_depth - m_changingNode.Depth, op);
-		TraverseOneDepthToChangeOperatorWithCull(m_operatorTree, m_changingNode, m_cur_depth - m_changingNode.Depth, OrigamiOperator.empty);
+
+		TraverseOneDepthToChangeOperator(m_addingOperationRoot, m_cur_depth - m_addingOperationRoot.Depth, op);
+		TraverseOneDepthToChangeOperatorWithCull(m_operatorTree, m_addingOperationRoot, m_cur_depth, OrigamiOperator.empty);
+
+		++m_cur_depth;
 	}
 	#endregion
 
@@ -157,7 +166,6 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	public void ConfirmAddOperation()
 	{
 		m_addingOperationRoot = null;
-		++m_cur_depth;
 	}
 	#endregion
 
@@ -171,16 +179,57 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
 
-		if (m_addingOperationRoot == null)
+		TraverseOneDepthToChangeOperator(m_operatorTree, m_cur_depth - 1, op);
+		return true;
+	}
+
+	public bool ChangeLastOperationAndCheckFoldTop(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
+	{
+		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(m_addingOperationRoot, world_head_pos, world_toe_pos, is_forward);
+		if (m_addingOperationRoot != change_parent)
 		{
-			TraverseOneDepthToChangeOperator(m_operatorTree, m_cur_depth, op);
-		}
-		else
-		{
-			TraverseOneDepthToChangeOperator(m_addingOperationRoot, m_cur_depth - m_addingOperationRoot.Depth, op);
+			RemoveLastOperation(m_addingOperationRoot);
+			AddOperationOnlyTop(change_parent, world_head_pos, world_toe_pos, world_fold_dir, is_forward);
+			return true;
 		}
 
+		OrigamiOperator op = new OrigamiOperator();
+		op.head_pos = world_head_pos;
+		op.toe_pos = world_toe_pos;
+		op.touch_dir = world_fold_dir;
+		op.is_forward = is_forward;
+
+		TraverseOneDepthToChangeOperator(m_addingOperationRoot, m_cur_depth - 1 - m_addingOperationRoot.Depth, op);
 		return true;
+	}
+	#endregion
+
+	#region 去掉最近的一个操作：将operation变为无效后，统一删去右节点
+	public void RemoveLastOperation(JBinaryTree<OrigamiOperationNode> origin)
+	{
+		TraverseOneDepthToChangeOperator(origin, m_cur_depth - 1 - origin.Depth, OrigamiOperator.empty);
+		RemoveLastRightNodes();
+	}
+	public void RemoveLastRightNodes()
+	{
+		if(m_cur_depth == 0)
+		{
+			return;
+		}
+		m_operatorTree.TraverseOneDepthWithCheck(m_cur_depth - 1, delegate (JBinaryTree<OrigamiOperationNode> node)
+		{
+			if (node.HasLeftChild())
+			{
+				node.GetLeftChild().trans.GetComponent<Polygon>().ShowPolygon(false);
+			}
+			if (node.HasRightChild())
+			{
+				node.GetRightChild().trans.GetComponent<Polygon>().ShowPolygon(false);
+			}
+			node.Data.trans.GetComponent<Polygon>().ShowPolygon(true);
+			return true;
+		});
+		-- m_cur_depth;
 	}
 	#endregion
 
@@ -196,7 +245,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		
 		// 记录当前正在变化的节点
 		JBinaryTree<OrigamiOperationNode> change_parent = FindNeedChangeTallestParent(touching_node, world_head_pos, world_toe_pos, is_forward);
-		m_changingNode = change_parent;
+		m_revertingOperationNode = change_parent;
 
 		ChangeOperationInLeaseChange(world_head_pos, world_toe_pos, world_fold_dir, is_forward);
 
@@ -204,7 +253,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	}
 	public void ChangeOperationInLeaseChange(Vector2 world_head_pos, Vector2 world_toe_pos, Vector2 world_fold_dir, bool is_forward)
 	{
-		if(m_changingNode == null)
+		if(m_revertingOperationNode == null)
 		{
 			return;
 		}
@@ -214,12 +263,12 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.touch_dir = world_fold_dir;
 		op.is_forward = is_forward;
 
-		op = op.TransformToLocal(m_changingNode.Data.trans);
-		ResetNodeOperationAndChild(m_changingNode, op);
+		op = op.TransformToLocal(m_revertingOperationNode.Data.trans);
+		ResetNodeOperationAndChild(m_revertingOperationNode, op);
 	}
 	public void ClearLastOperationInLeaseChange()
 	{
-		m_changingNode = null;
+		m_revertingOperationNode = null;
 	}
 	#endregion
 
@@ -259,6 +308,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		GameObject new_obj = GameObject.Instantiate(m_sample);
 		new_obj.name = name;
 		new_obj.transform.parent = parent;
+		new_obj.transform.SetPositionAndRotation(parent.position, parent.rotation);
 		new_obj.GetComponent<Polygon>().SetPolygon(p);
 		OrigamiOperationNode res = new OrigamiOperationNode(new_obj.transform);
 		res.polygon = p;
@@ -330,6 +380,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				left.polygon = node.Data.polygon;
 				left.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
 				left.trans.GetComponent<Polygon>().SetPolygon(left.polygon);
+				left.trans.GetComponent<Polygon>().ShowPolygon(true);
 			}
 			else
 			{
@@ -343,7 +394,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 			if (node.HasRightChild())
 			{
-				GameObject.Destroy(node.GetRightChild().trans.gameObject);
+				node.GetRightChild().trans.GetComponent<Polygon>().ShowPolygon(false);
 				node.SetRightChildNull();
 			}
 		}
@@ -356,6 +407,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				right.polygon = node.Data.polygon;
 				right.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
 				right.trans.GetComponent<Polygon>().SetPolygon(right.polygon);
+				right.trans.GetComponent<Polygon>().ShowPolygon(true);
 			}
 			else
 			{
@@ -371,7 +423,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 			if (node.HasLeftChild())
 			{
-				GameObject.Destroy(node.GetLeftChild().trans.gameObject);
+				node.GetLeftChild().trans.GetComponent<Polygon>().ShowPolygon(false);
 				node.SetLeftChildNull();
 			}
 		}
@@ -388,6 +440,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 					right.polygon = right_p;
 					right.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
 					right.trans.GetComponent<Polygon>().SetPolygon(right_p);
+					right.trans.GetComponent<Polygon>().ShowPolygon(true);
 				}
 				else
 				{
@@ -400,6 +453,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 					left.polygon = left_p;
 					left.trans.SetPositionAndRotation(node.Data.trans.position, node.Data.trans.rotation);
 					left.trans.GetComponent<Polygon>().SetPolygon(left_p);
+					left.trans.GetComponent<Polygon>().ShowPolygon(true);
 				}
 				else
 				{

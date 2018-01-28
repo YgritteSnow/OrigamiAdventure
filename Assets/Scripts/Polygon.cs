@@ -200,9 +200,25 @@ public class PolygonData
 		for (int i = 0; i != point_line.Count; ++i)
 		{
 			new_points.Add(m_points[point_line[i]]);
-			point_line[i] = i;
 		}
 		m_points = new_points;
+
+		OnSortPointsForEdges(ref point_line);
+	}
+
+	void OnSortPointsForEdges(ref List<int> point_line)
+	{
+		int[] point_mapping = new int[point_line.Count];
+		for(int i = 0; i < point_line.Count; ++i)
+		{
+			point_mapping[point_line[i]] = i;
+		}
+
+		for(int i = 0; i < m_edges.Count; ++i)
+		{
+			m_edges[i].idx_head = point_mapping[m_edges[i].idx_head];
+			m_edges[i].idx_toe = point_mapping[m_edges[i].idx_toe];
+		}
 	}
 
 	/// <summary>
@@ -599,7 +615,7 @@ public class PolygonData
 			Vector2 left_pos = m_points[e.idx_head].position;
 			Vector2 right_pos = m_points[e.idx_toe].position;
 			int left_sign = System.Math.Sign(Vector2.Dot(left_pos - local_head_pos, line_normal));
-			int right_sign = System.Math.Sign(Vector2.Dot(left_pos - local_head_pos, line_normal));
+			int right_sign = System.Math.Sign(Vector2.Dot(right_pos - local_head_pos, line_normal));
 			if(left_sign != 0 && right_sign != 0 && left_sign != right_sign)
 			{
 				if(left_sign > 0)

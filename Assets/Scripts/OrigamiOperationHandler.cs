@@ -51,6 +51,7 @@ public class OrigamiOperationHandler : MonoBehaviour
 		OnUpdateForMouseDrag();
 		OnUpdateForRevertFold();
 		OnUpdateForFoldOne();
+		OnUpdateForRevertOne();
 	}
 
 	#region 鼠标拖拽控制
@@ -201,10 +202,12 @@ public class OrigamiOperationHandler : MonoBehaviour
 		{
 			m_calculator.AddOperationOnlyTop(m_press_startPos, mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
 			m_is_distance_valid = true;
+			//m_calculator.ChangeLastOperationAndCheckFoldTop(mid_pos, mid_pos + fold_dir, edge_dir, m_is_forward);
 		}
 		else
 		{
-			m_calculator.ChangeLastOperation(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
+			//return;
+			m_calculator.ChangeLastOperationAndCheckFoldTop(mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
 		}
 	}
 
@@ -246,6 +249,19 @@ public class OrigamiOperationHandler : MonoBehaviour
 	{
 		m_is_distance_valid = false;
 		m_calculator.ClearLastOperationInLeaseChange();
+	}
+	#endregion
+
+	#region 单次顺序回退
+	void OnUpdateForRevertOne()
+	{
+		if (Input.GetKeyDown(KeyCode.E))
+		{
+			if(!m_is_distance_valid)
+			{
+				m_calculator.RemoveLastRightNodes();
+			}
+		}
 	}
 	#endregion
 
