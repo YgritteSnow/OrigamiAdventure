@@ -13,7 +13,21 @@ public class OrigamiOperator
 		toe_pos = new Vector3(-9999, -1);
 		_touch_dir = Vector3.right;
 		is_forward = true;
+
+		_force_side = 0;
+		_rotate_ang = 180;
 	}
+	private OrigamiOperator(int force_side, bool forward)
+	{
+		head_pos = new Vector3(-9999, 1);
+		toe_pos = new Vector3(-9999, -1);
+		_touch_dir = Vector3.right;
+
+		is_forward = forward;
+		_force_side = force_side;
+		_rotate_ang = has_force_side() ? 0 : 180;
+	}
+
 	public Vector2 head_pos;
 	public Vector2 toe_pos;
 	public bool is_forward;
@@ -35,6 +49,13 @@ public class OrigamiOperator
 		}
 	}
 
+	private int _force_side;
+	public bool has_force_side() { return _force_side != 0; }
+	public int force_side { get { return _force_side; } }
+
+	private float _rotate_ang;
+	public float rotate_ang { get { return _rotate_ang; } }
+
 	public OrigamiOperator TransformToLocal(Transform trans)
 	{
 		OrigamiOperator result = new OrigamiOperator();
@@ -55,7 +76,11 @@ public class OrigamiOperator
 		return result;
 	}
 
-	public static OrigamiOperator empty = new OrigamiOperator();
+	public static OrigamiOperator getForceOp(int side, bool forward)
+	{
+		return new OrigamiOperator(side, forward);
+	}
+	public static OrigamiOperator forceLeftForward = new OrigamiOperator(1, true);
 }
 
 /// <summary>
@@ -158,7 +183,8 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		op.is_forward = is_forward;
 
 		TraverseOneDepthToChangeOperator(m_addingOperationRoot, m_cur_depth - m_addingOperationRoot.Depth, op);
-		TraverseOneDepthToChangeOperatorWithCull(m_operatorTree, m_addingOperationRoot, m_cur_depth, OrigamiOperator.empty);
+		TraverseOneDepthToChangeOperatorWithCull(m_operatorTree, m_addingOperationRoot, m_cur_depth
+			, OrigamiOperator.getForceOp(1, is_forward));
 
 		++m_cur_depth;
 	}
@@ -210,7 +236,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	#region 去掉最近的一个操作：将operation变为无效后，统一删去右节点
 	public void RemoveLastOperation(JBinaryTree<OrigamiOperationNode> origin)
 	{
-		TraverseOneDepthToChangeOperator(origin, m_cur_depth - 1 - origin.Depth, OrigamiOperator.empty);
+		TraverseOneDepthToChangeOperator(origin, m_cur_depth - 1 - origin.Depth, OrigamiOperator.forceLeftForward);
 		RemoveLastRightNodes();
 	}
 	public void RemoveLastRightNodes()
@@ -308,9 +334,18 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 
 	OrigamiOperationNode GenerateObjAndNode(string name, Transform parent, PolygonData p)
 	{
-		GameObject new_obj = GameObject.Instantiate(m_sample);
-		new_obj.name = name;
-		new_obj.transform.parent = parent;
+		Transform new_obj_trans = parent.Find(name);
+		GameObject new_obj = null;
+		if(new_obj_trans != null)
+		{
+			new_obj = new_obj_trans.gameObject;
+		}
+		else
+		{
+			new_obj = GameObject.Instantiate(m_sample);
+			new_obj.name = name;
+			new_obj.transform.parent = parent;
+		}
 		new_obj.transform.SetPositionAndRotation(parent.position, parent.rotation);
 		new_obj.GetComponent<Polygon>().SetPolygon(p);
 		OrigamiOperationNode res = new OrigamiOperationNode(new_obj.transform);
@@ -361,6 +396,17 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 	#endregion
 
 	#region 对单个节点进行 OrigamiOperation
+	int CheckFoldSide(JBinaryTree<OrigamiOperationNode> node, OrigamiOperator op)
+	{
+		if(op.has_force_side())
+		{
+			return op.force_side;
+		}
+		Vector2 local_head_pos = node.Data.trans.InverseTransformPoint(op.head_pos);
+		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
+		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
+		return node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
+	}
 	/// <summary>
 	/// 为node计算并添加操作。
 	/// 通常情况下不应该在遍历时直接修改树，但是这里的操作内容不会影响遍历结果，所以直接这么搞了嗯嗯嗯
@@ -370,10 +416,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		node.Data.fold_op = op.TransformToLocal(node.Data.trans);
 		int fold_order = node.Depth + 1;
 
-		Vector2 local_head_pos = node.Data.trans.InverseTransformPoint(op.head_pos);
-		Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
-		Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
-		int side = node.Data.polygon.CheckAllOneSide(local_head_pos, local_toe_pos, local_fold_dir);
+		int side = CheckFoldSide(node, op);
 		if(side > 0) // 不需要翻折的一侧
 		{
 			OrigamiOperationNode left;
@@ -422,7 +465,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 			right.trans.GetComponent<Polygon>().SetPolygonDepth(right.fold_order);
 
 			node.SetRightChild(right);
-			right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
+			right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, op.rotate_ang);
 
 			if (node.HasLeftChild())
 			{
@@ -432,6 +475,9 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 		}
 		else
 		{
+			Vector2 local_head_pos = node.Data.trans.InverseTransformPoint(op.head_pos);
+			Vector2 local_toe_pos = node.Data.trans.InverseTransformPoint(op.toe_pos);
+			Vector2 local_fold_dir = node.Data.trans.InverseTransformVector(op.touch_dir);
 			PolygonData left_p, right_p;
 			int cut_edge_id;
 			if (node.Data.polygon.CutPolygon(fold_order, local_head_pos, local_toe_pos, local_fold_dir, out left_p, out right_p, out cut_edge_id))
@@ -475,7 +521,7 @@ public class OrigamiOperationCalculator : MonoBehaviour {
 				right.fold_forward = op.is_forward;
 				node.SetRightChild(right);
 				
-				right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, 180);
+				right.trans.RotateAround(op.head_pos, op.toe_pos - op.head_pos, op.rotate_ang);
 			}
 			else
 			{

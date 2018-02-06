@@ -197,7 +197,6 @@ public class OrigamiOperationHandler : MonoBehaviour
 		Vector2 fold_dir = m_press_curPos - m_press_startPos;
 		fold_dir.Normalize();
 		Vector2 edge_dir = new Vector2(fold_dir.y, -fold_dir.x);
-
 		if (!m_is_distance_valid)
 		{
 			m_calculator.AddOperationOnlyTop(m_press_startPos, mid_pos, mid_pos - edge_dir, fold_dir, m_is_forward);
